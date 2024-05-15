@@ -254,15 +254,15 @@ class OT2D:
   #--------------------------------------------------------------------------------------------------------
   def identifyType(self):
     #INCREMENTAL DRIFT
-    if self.__alert and self.__retrain_model and (self.__ot_distances[-2]>self.__ot_distances[-3]):
+    if self.__alert and self.__retrain_model:
       self.__alert=False
       self.__concept_drifts[-1].set_drift_type(DriftType.INCREMENTAL)
       return DriftType.INCREMENTAL
 
     #SUDDEN DRIFT
-    elif not self.__alert and self.__retrain_model :
+    elif not self.__alert and self.__retrain_model:
       self.__abrupt=True
-    if self.__abrupt and self.isStable(self.__curr_concept.get_length()):
+    if self.__abrupt and self.isStable(self.__curr_concept.get_length()) and self.__reappearing_count==0 :
       self.__concept_drifts[-1].set_drift_type(DriftType.SUDDEN)
       self.__abrupt=False
       return DriftType.SUDDEN
@@ -289,4 +289,5 @@ class OT2D:
 
       if not self.isGradual(drifts_length) and self.__concepts[-1].get_length() != 1:
         self.__concept_drifts[-1].set_drift_type(DriftType.RECURRENT)
+        self.__reappearing_count=0
         return DriftType.RECURRENT
