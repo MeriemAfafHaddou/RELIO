@@ -82,12 +82,12 @@ if button:
         current_window.append(df.iloc[i-1])
         if len(current_window) == window_size:
             api.set_curr_win(np.array(current_window))
+            api.monitorDrift()
             distances_data=pd.DataFrame(api.get_distances()[:i], columns=['Distance'])
             distances_data['Alerte']=alert_thold
             distances_data['Détection']=detect_thold
             distances.line_chart(distances_data, color=["#FFAC1C","#338AFF", "#FF0D0D"])
 
-            api.monitorDrift()
             if(api.get_action()==0):
                 drift_time = datetime.datetime.now().strftime("%H:%M:%S")
                 st.toast(f':red[Un drift est détecté au point de données {i+1} à {drift_time}]', icon="⚠️")

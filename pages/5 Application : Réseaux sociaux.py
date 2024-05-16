@@ -1,115 +1,138 @@
 import streamlit as st
+import streamlit.components.v1 as components
+import networkx as nx
+from streamlit_agraph import agraph, Node, Edge, Config
 import pandas as pd
-import OT2D_API as ot2d
 import time
-import numpy as np
-import datetime
+from IPython.display import display, clear_output
+import streamlit as st
+import plotly.graph_objs as go
 
 st.write("""
 # Application : Détection de drift dans les réseaux sociaux
 """)
-st.write("""
-         ### Visualisation : 
-""")
-df = pd.read_csv("data/iris_sudden.csv")
 
-with st.popover(":gear: Modifier les paramètres"):
-    st.write("""
-     :gear: Modifier les paramètres de la simulation 
-     """)
-    window_size = st.number_input('Introduire la taille de la fenêtre', min_value=1, value=50, placeholder="Taille de la fenêtre")
-    metric_input=st.selectbox('Choisir la métrique de détection', ['Wasserstein d\'ordre 1', 'Wasserstein d\'ordre 2', 'Wasserstein régularisé'], index=1)
-    cost_input=st.selectbox('Choisir la fonction de coût', ['Euclidienne', 'Euclidienne Standarisée', 'Mahalanobis'], index=1)
-    if metric_input == 'Wasserstein d\'ordre 1':
-        ot_metric = ot2d.OTMetric.WASSERSTEIN1
-    elif metric_input == 'Wasserstein d\'ordre 2':
-        ot_metric = ot2d.OTMetric.WASSERSTEIN2
-    elif metric_input == 'Wasserstein régularisé':
-        ot_metric = ot2d.OTMetric.SINKHORN
 
-    if cost_input == 'Euclidienne':
-        cost_function = ot2d.CostFunction.EUCLIDEAN
-    elif cost_input == 'Euclidienne Standarisée':
-        cost_function = ot2d.CostFunction.SEUCLIDEAN
-    elif cost_input == 'Mahalanobis':    
-        cost_function = ot2d.CostFunction.MAHALANOBIS
-    alert_thold=st.number_input('Introduire le seuil d\'alerte', min_value=0.1, value=0.8, placeholder="Seuil d'alerte")
-    detect_thold=st.number_input('Introduire le seuil de détection', min_value=0.1, value=1.2, placeholder="Seuil de détection")
-    stblty_thold=st.number_input('Introduire le seuil de stabilité', min_value=1, value=4, placeholder="Seuil de stabilité")
+s0 = {'index': 0, 'snapshot': pd.read_csv('data/graphes/Digg_snapshot_0.edgelist.txt', sep=' ', header=None).iloc[:, :2]}
+s1 = {'index': 1, 'snapshot': pd.read_csv('data/graphes/Digg_snapshot_1.edgelist.txt', sep=' ', header=None).iloc[:, :2]}
+s2 = {'index': 2, 'snapshot': pd.read_csv('data/graphes/Digg_snapshot_2.edgelist.txt', sep=' ', header=None).iloc[:, :2]}
+s3 = {'index': 3, 'snapshot': pd.read_csv('data/graphes/Digg_snapshot_3.edgelist.txt', sep=' ', header=None).iloc[:, :2]}
+s4 = {'index': 4, 'snapshot': pd.read_csv('data/graphes/Digg_snapshot_4.edgelist.txt', sep=' ', header=None).iloc[:, :2]}
+s5 = {'index': 5, 'snapshot': pd.read_csv('data/graphes/Digg_snapshot_5.edgelist.txt', sep=' ', header=None).iloc[:, :2]}
+s6 = {'index': 6, 'snapshot': pd.read_csv('data/graphes/Digg_snapshot_6.edgelist.txt', sep=' ', header=None).iloc[:, :2]}
+s7 = {'index': 7, 'snapshot': pd.read_csv('data/graphes/Digg_snapshot_7.edgelist.txt', sep=' ', header=None).iloc[:, :2]}
+s8 = {'index': 8, 'snapshot': pd.read_csv('data/graphes/Digg_snapshot_8.edgelist.txt', sep=' ', header=None).iloc[:, :2]}
+s9 = {'index': 9, 'snapshot': pd.read_csv('data/graphes/Digg_snapshot_9.edgelist.txt', sep=' ', header=None).iloc[:, :2]}
+for snapshot in [s0, s1, s2, s3, s4, s5, s6, s7, s8, s9]:
+    snapshot['snapshot'].columns = ['source', 'target']
+# Load data
+snapshots = [s0, s1, s2, s3, s4, s5, s6, s7, s8, s9]  # Replace with your actual snapshots
 
-api=ot2d.OT2D(window_size, alert_thold, detect_thold, ot_metric, cost_function, stblty_thold )
-ref_dist=[]
-for i in range(window_size):
-    ref_dist.append(df.iloc[i])
-first_concept=ot2d.Concept(1, np.array(ref_dist))
-api.add_concept(first_concept)
-api.set_curr_concept(first_concept)
-current_window=[]
-st.write(f"""
-:small_red_triangle_down: Taille de la fenêtre : ***{window_size} Données*** \n
-:small_red_triangle_down: Métrique de détection : ***{metric_input}*** \n
-:small_red_triangle_down: Fonction de coût : ***{cost_input}***
-         """)
+df = s1['snapshot'].sample(1000)
+num_rows = len(df)
+num_rows_per_slider = 200
 
-button=st.button(":arrow_forward: Lancer la simulation", type="primary")
-if button:
-    st.toast("Initialisation de l'API en cours...", icon="⏳")
-    st.write("""
-    ##### :bar_chart: Évolution de la distribution de données : 
-    """)
-    chart = st.empty()
-    st.write(f"""
-    ##### 	:chart_with_upwards_trend: Évolution de la distance de {metric_input}  : 
-    """)
-    distances=st.empty()
-    st.divider()
-    st.write("""
-            ### :clock1: Historique des drifts détectés: 
-    """)
-    for i in range(window_size, len(df)+1):
-        # Plot the data from the start to the current point
-        chart.line_chart(df[['petal_length', 'petal_width']].iloc[:i])
-        current_window.append(df.iloc[i-1])
-        if len(current_window) == window_size:
-            api.set_curr_win(np.array(current_window))
-            distances_data=pd.DataFrame(api.get_distances()[:i], columns=['Distance'])
-            distances_data['Alerte']=alert_thold
-            distances_data['Détection']=detect_thold
-            distances.line_chart(distances_data, color=["#FFAC1C","#338AFF", "#FF0D0D"])
-            api.monitorDrift()
-            if(api.get_action()==0):
-                drift_time = datetime.datetime.now().strftime("%H:%M:%S")
-                st.toast(f':red[Un drift est détecté au point de données {i+1} à {drift_time}]', icon="⚠️")
-                st.error(f'Un drift est détecté au point de données {i+1} à {drift_time}', icon="⚠️")
-                drift_type=api.identifyType()
-                if(drift_type != None):
-                    if drift_type == ot2d.DriftType.GRADUAL:
-                        st.toast(f':blue[Le type de drift est : Graduel]', icon="📌")
-                        st.info(f'Le type de drift est : Graduel', icon="📌")
-                    elif drift_type == ot2d.DriftType.SUDDEN:
-                        st.toast(f':blue[Le type de drift est : Soudain]', icon="📌")
-                        st.info(f'Le type de drift est : Soudain', icon="📌")
-                    elif drift_type == ot2d.DriftType.RECURRENT:
-                        st.toast(f':blue[Le type de drift est : Récurrent]', icon="📌")
-                        st.info(f'Le type de drift est : Récurrent', icon="📌")
-                    elif drift_type == ot2d.DriftType.INCREMENTAL:
-                        st.toast(f':blue[Le type de drift est : Incrémental]', icon="📌")
-                        st.info(f'Le type de drift est : Incrémental', icon="📌")
-                api.reset_retrain_model()
-            current_window=[]
-        drift_type=api.identifyType()
-        if(drift_type != None):
-            if drift_type == ot2d.DriftType.GRADUAL:
-                st.toast(f':blue[Le type de drift est : Graduel]', icon="📌")
-                st.info(f'Le type de drift est : Graduel', icon="📌")
-            elif drift_type == ot2d.DriftType.SUDDEN:
-                st.toast(f':blue[Le type de drift est : Soudain]', icon="📌")
-                st.info(f'Le type de drift est : Soudain', icon="📌")
-            elif drift_type == ot2d.DriftType.RECURRENT:
-                st.toast(f':blue[Le type de drift est : Récurrent]', icon="📌")
-                st.info(f'Le type de drift est : Récurrent', icon="📌")
-            elif drift_type == ot2d.DriftType.INCREMENTAL:
-                st.toast(f':blue[Le type de drift est : Incrémental]', icon="📌")
-                st.info(f'Le type de drift est : Incrémental', icon="📌")
-        # Pause for a moment
-        time.sleep(0.05)
+# Create a slider to select the starting row
+start_row = st.slider("Select starting row", 100, num_rows, 400, num_rows_per_slider)
+
+# Select the rows based on the slider value
+selected_rows = df.iloc[:start_row]
+
+
+nodes = []
+edges = []
+
+# Add nodes
+for node in selected_rows["source"].unique():
+    nodes.append(Node(id=str(node), label=str(node), size=10))
+
+# Add nodes that are in target and not in source
+for node in selected_rows["target"].unique():
+    if node not in selected_rows["source"].unique():
+        nodes.append(Node(id=str(node), label=str(node), size=10))
+
+# Add edges
+for index, row in selected_rows.iterrows():
+    edges.append(Edge(source=str(row['source']), target=str(row['target'])))
+
+config = Config(width=750,
+                height=950,
+                directed=True, 
+                physics=True, 
+                hierarchical=False)
+
+return_value = agraph(nodes=nodes, 
+                      edges=edges, 
+                      config=config)
+
+# A = list(selected_rows["source"].unique())
+# B = list(selected_rows["target"].unique())
+# node_list = set(A + B)
+# G = nx.Graph()
+
+# # Add nodes and edges to the graph object
+# for i in node_list:
+#     G.add_node(i)
+# for i, j in selected_rows.iterrows():
+#     G.add_edges_from([(j["source"], j["target"])])
+
+# pos = nx.spring_layout(G, k=0.2, iterations=10)
+# # Add positions of nodes to the graph
+# for n, p in pos.items():
+#     G._node[n]['pos'] = p
+
+# edge_trace = go.Scatter(
+#     x=[],
+#     y=[],
+#     line=dict(width=1, color='#888'),
+#     hoverinfo='none',
+#     mode='lines')
+
+# for edge in G.edges():
+#     x0, y0 = G._node[edge[0]]['pos']
+#     x1, y1 = G._node[edge[1]]['pos']
+#     edge_trace['x'] += tuple([x0, x1, None])
+#     edge_trace['y'] += tuple([y0, y1, None])
+
+# node_trace = go.Scatter(
+#     x=[],
+#     y=[],
+#     text=[],
+#     mode='markers',
+#     hoverinfo='text',
+#     marker=dict(
+#         showscale=True,
+#         colorscale='purp',
+#         color=[],
+#         size=20,
+#         colorbar=dict(
+#             thickness=10,
+#             title='# Connections',
+#             xanchor='left',
+#             titleside='right',
+#         ),
+#         line=dict(width=0)))
+
+# for node in G.nodes():
+#     x, y = G._node[node]['pos']
+#     node_trace['x'] += tuple([x])
+#     node_trace['y'] += tuple([y])
+
+# for node, adjacencies in enumerate(G.adjacency()):
+#     node_trace['marker']['color'] += tuple([len(adjacencies[1])])
+#     node_info = str(adjacencies[0]) + ' # of connections: ' + str(len(adjacencies[1]))
+#     node_trace['text'] += tuple([node_info])
+
+# fig = go.Figure(data=[edge_trace, node_trace],
+#                 layout=go.Layout(
+#                     title=f"Visualisation du Snapshot numéro {1}",
+#                     titlefont=dict(size=25),
+#                     showlegend=False,
+#                     hovermode='closest',
+#                     margin=dict(b=20, l=5, r=5, t=40),
+#                     xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+#                     yaxis=dict(showgrid=False, zeroline=False, showticklabels=False)))
+# fig.update_traces(marker=dict(size=12, line=dict(width=2, color='DarkSlateGrey')),
+#                   selector=dict(mode='markers'))
+
+# st.plotly_chart(fig, use_container_width=True)
