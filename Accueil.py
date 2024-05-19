@@ -29,3 +29,15 @@ st.page_link("pages/1 Drift Soudain.py", label="  Drift Soudain", icon="🔻")
 st.page_link("pages/2 Drift Graduel.py", label="  Drift Graduel", icon="🔻")
 st.page_link("pages/3 Drift Incremental.py", label="  Drift Incremental", icon="🔻")
 st.page_link("pages/4 Drift Recurrent.py", label="  Drift Recurrent", icon="🔻")
+st.divider()
+st.write("""
+### ▶️ Tests sur des datasets
+""")
+st.page_link("pages/5 Datasets Synthétiques.py", label="  Datasets Synthétiques", icon="🔻")
+st.page_link("pages/6 Datasets Réels.py", label="  Datasets Réels", icon="🔻")
+
+st.divider()
+st.write("""
+### ▶️ Application sur un cas d'étude
+""")
+st.page_link("pages/7 Application : Réseaux sociaux.py", label="  Réseaux Sociaux", icon="🔻")
