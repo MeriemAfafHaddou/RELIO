@@ -26,7 +26,7 @@ st.write("""
 # Dataset choice
 option = st.selectbox(
     ":bar_chart: Quel dataset voulez vous choisir?",
-    ("Asfault", "Outdoor Objects", "Ozone"))
+    ("Asfault", "Electricity","Outdoor Objects", "Ozone"))
 
 if option == "Asfault":
     df=pd.read_csv("data/Asfault.csv", header=None)[:5000]
@@ -38,6 +38,17 @@ if option == "Asfault":
     alert_thold=6.5
     detect_thold=7.0
     win_size=250
+
+elif option == "Electricity":
+    df=pd.read_csv('data/electricity.csv')[:8000]
+    label_encoder = LabelEncoder()
+    df['Class'] = label_encoder.fit_transform(df['class'])
+    class_mapping = dict(zip(label_encoder.classes_, label_encoder.transform(label_encoder.classes_)))
+    df = df.drop('class',axis='columns')
+    df.columns= df.columns.astype(str)
+    alert_thold=2.2
+    detect_thold=2.3
+    win_size=500
 
 elif option == "Outdoor Objects":
     df=pd.read_csv("data/outdoor.csv", header=None)
