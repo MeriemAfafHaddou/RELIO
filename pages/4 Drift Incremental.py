@@ -55,10 +55,18 @@ first_concept=ot2d.Concept(1, np.array(ref_dist))
 api.add_concept(first_concept)
 api.set_curr_concept(first_concept)
 current_window=[]
-st.write(f"""
-:small_red_triangle_down: Taille de la fenêtre : ***{window_size} Données*** \n
-:small_red_triangle_down: Métrique de détection : ***{metric_input}*** \n
-:small_red_triangle_down: Fonction de coût : ***{cost_input}***
+col1, col2 = st.columns(2)
+with col1:
+    st.write(f"""
+    :small_red_triangle_down: Taille de la fenêtre : ***{window_size} Données*** \n
+    :small_red_triangle_down: Métrique de détection : ***{metric_input}*** \n
+    :small_red_triangle_down: Fonction de coût : ***{cost_input}***
+         """)
+with col2:
+    st.write(f"""
+    :small_red_triangle_down: Seuil d'alerte : ***{alert_thold}*** \n
+    :small_red_triangle_down: Seuil de détection : ***{detect_thold}*** \n
+    :small_red_triangle_down: Seuil de stabilité : ***{stblty_thold} fenêtres***
          """)
 
 button=st.button(":arrow_forward: Lancer la simulation", type="primary")
@@ -107,6 +115,9 @@ if button:
                         st.toast(f':blue[Le type de drift est : Incrémental]', icon="📌")
                         st.info(f'Le type de drift est : Incrémental', icon="📌")
                 api.reset_retrain_model()
+            elif (api.get_action()==1):
+                st.toast(f"Alerte : Un petit changement de distribution s'est produit !", icon="❗")
+                st.warning(f"Alerte : Un petit changement de distribution s'est produit !", icon="❗")
             current_window=[]
         drift_type=api.identifyType()
         if(drift_type != None):
