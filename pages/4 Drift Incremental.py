@@ -77,7 +77,7 @@ if button:
     """)
     chart = st.empty()
     st.write(f"""
-    ##### 	:chart_with_upwards_trend: Évolution de la distance de {metric_input}  : 
+    ##### 	:chart_with_upwards_trend: Évolution de la distance de {metric_input} entre la distribution de référence et la fenêtre courante  : 
     """)
     distances=st.empty()
     st.divider()
@@ -116,8 +116,9 @@ if button:
                         st.info(f'Le type de drift est : Incrémental', icon="📌")
                 api.reset_retrain_model()
             elif (api.get_action()==1):
-                st.toast(f"Alerte : Un petit changement de distribution s'est produit !", icon="❗")
-                st.warning(f"Alerte : Un petit changement de distribution s'est produit !", icon="❗")
+                st.toast(f"Alerte : Un petit changement de distribution s'est produit ! à partir de la donnée d'indice  {i+1-window_size} à {drift_time}", icon="❗")
+                st.warning(f"Alerte : Un petit changement de distribution s'est produit ! à partir de la donnée d'indice  {i+1-window_size} à {drift_time}", icon="❗")
+                api.reset_ajust_model()
             current_window=[]
         drift_type=api.identifyType()
         if(drift_type != None):

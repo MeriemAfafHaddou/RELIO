@@ -29,12 +29,15 @@ st.write("""
 option = st.selectbox(
     ":bar_chart: Quel dataset voulez vous choisir?",
     ("Insects : Soudain", "Insects : Incrémental"))
-df = pd.read_csv("data/iris_sudden.csv")
-
 if option == "Insects : Soudain":
     df=pd.read_csv("data/insects_sudden.csv", header=None)[9800:13800]
+    alert_thold=5.4
+    detect_thold=6.2
 elif option == "Insects : Incrémental":
-    df=pd.read_csv("data/insects_incremental.csv", header=None)[32000:40000]
+    df=pd.read_csv("data/insects_incremental.csv", header=None)[32000:37000]
+    alert_thold=4.7
+    detect_thold=5.3
+all_classes=np.array(df)[:,-1]
 
 #Modify parameters
 with st.popover(":gear: Modifier les paramètres"):
@@ -57,8 +60,8 @@ with st.popover(":gear: Modifier les paramètres"):
         cost_function = ot2d.CostFunction.SEUCLIDEAN
     elif cost_input == 'Mahalanobis':    
         cost_function = ot2d.CostFunction.MAHALANOBIS
-    alert_thold=st.number_input('Introduire le seuil d\'alerte', min_value=0.1, value=5.4, placeholder="Seuil d'alerte")
-    detect_thold=st.number_input('Introduire le seuil de détection', min_value=0.1, value=6.2, placeholder="Seuil de détection")
+    alert_thold=st.number_input('Introduire le seuil d\'alerte', min_value=0.1, value=alert_thold, placeholder="Seuil d'alerte")
+    detect_thold=st.number_input('Introduire le seuil de détection', min_value=0.1, value=detect_thold, placeholder="Seuil de détection")
     stblty_thold=st.number_input('Introduire le seuil de stabilité', min_value=1, value=3, placeholder="Seuil de stabilité")
 
 #API initialization
@@ -74,12 +77,10 @@ current_window=[]
 drift_impacts=[]
 accuracies=[]
 
-model = SGDClassifier()
 drifted_model=SGDClassifier()
 ref_dist_X = np.array(ref_dist)[:, :-1]
 ref_dist_y = np.array(ref_dist)[:, -1].astype(int)
-model.partial_fit(ref_dist_X, ref_dist_y, classes=np.unique(ref_dist_y))
-drifted_model=model
+all_classes=np.unique(np.array(df)[:,-1].astype(int))
 col1, col2 = st.columns(2)
 with col1:
     st.write(f"""
@@ -95,6 +96,18 @@ with col2:
          """)
 pc1 = pca.fit_transform(df)
 button=st.button(":arrow_forward: Lancer le test ", type="primary")
+param_grid = {
+    'alpha': [0.0001, 0.001, 0.01, 0.1],
+    'penalty': ['l2', 'l1', 'elasticnet'],
+    'max_iter': [1000, 2000, 3000]
+}
+grid_search = GridSearchCV(estimator=SGDClassifier(), param_grid=param_grid, cv=5, scoring='accuracy', error_score='raise')
+grid_search.fit(ref_dist_X, ref_dist_y)
+best_params = grid_search.best_params_
+model = SGDClassifier(**best_params, random_state=42)
+model.partial_fit(ref_dist_X, ref_dist_y, all_classes)
+drifted_model=SGDClassifier(**best_params,random_state=42)
+drifted_model.partial_fit(ref_dist_X, ref_dist_y, all_classes)
 if button:
     st.toast("Initialisation de l'API en cours...", icon="⏳")
 
@@ -104,7 +117,7 @@ if button:
     chart = st.empty()
 
     st.write(f"""
-    ##### 	:chart_with_upwards_trend: Évolution de la distance de {metric_input}  : 
+    ##### 	:chart_with_upwards_trend: Évolution de la distance de {metric_input} entre la distribution de référence et la fenêtre courante  : 
     """)
     distances=st.empty()
 
@@ -133,10 +146,9 @@ if button:
             accuracy = accuracy_score(y_pred, win_y)
             accuracies.append(accuracy)
 
-            y_pred=drifted_model.predict(win_X)
-            drifted_accuracy=accuracy_score(y_pred, win_y)
-            drift_impacts.append(drifted_accuracy)
-            
+            y_pred_drift=drifted_model.predict(win_X)
+            drifted_accuracy=accuracy_score(y_pred_drift, win_y)
+            drift_impacts.append(drifted_accuracy)            
 
             distances_data=pd.DataFrame(api.get_distances()[:i], columns=['Distance'])
             distances_data['Alerte']=alert_thold
@@ -168,31 +180,18 @@ if button:
                         st.info(f'Le type de drift est : Incrémental', icon="📌")
                 api.reset_retrain_model()
 
-                param_grid = {
-                    'alpha': [0.0001, 0.001, 0.01, 0.1],
-                    'penalty': ['l2', 'l1', 'elasticnet'],
-                    'max_iter': [1000, 2000, 3000]
-                }
                 print(f"UNIQUE : {np.unique(win_y)}")
                 train_X=np.concatenate((ref_dist_X, win_X))
                 train_y=np.concatenate((ref_dist_y, win_y))
-                grid_search = GridSearchCV(estimator=SGDClassifier(), param_grid=param_grid, cv=5, scoring='accuracy', error_score='raise')
-                grid_search.fit(train_X, train_y)
-                
-                best_params = grid_search.best_params_
-                print("Best hyperparameters found:", best_params)
-                
-                # Réentraîner le modèle avec les nouveaux hyperparamètres
-                model = SGDClassifier(**best_params)
                 model.fit(train_X, train_y)
                 ref_dist_X=win_X
                 ref_dist_y=win_y
             elif (api.get_action()==1):
-                st.toast(f"Alerte : Un petit changement de distribution s'est produit !", icon="❗")
-                st.warning(f"Alerte : Un petit changement de distribution s'est produit !", icon="❗")
-                train_X=np.concatenate((ref_dist_X, win_X))
-                train_y=np.concatenate((ref_dist_y, win_y))
-                model.partial_fit(train_X, train_y,classes=np.unique(train_y))
+                alert_time = datetime.datetime.now().strftime("%H:%M:%S")
+                st.toast(f"Alerte : Un petit changement de distribution s'est produit  à partir de la donnée d'indice {i+1-window_size} à {alert_time}!", icon="❗")
+                st.warning(f"Alerte : Un petit changement de distribution s'est produit  à partir de la donnée d'indice {i+1-window_size} à {alert_time}!", icon="❗")
+                model.partial_fit(win_X, win_y, classes=np.unique(win_y))
+                api.reset_ajust_model()
             current_window=[]
         drift_type=api.identifyType()
         if(drift_type != None):

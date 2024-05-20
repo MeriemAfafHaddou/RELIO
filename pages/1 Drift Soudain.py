@@ -74,7 +74,7 @@ if button:
     """)
     chart = st.empty()
     st.write(f"""
-    ##### 	:chart_with_upwards_trend: Évolution de la distance de {metric_input}  : 
+    ##### 	:chart_with_upwards_trend: Évolution de la distance de {metric_input} entre la distribution de référence et la fenêtre courante  : 
     """)
     distances=st.empty()
     st.divider()
