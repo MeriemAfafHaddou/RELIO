@@ -90,8 +90,8 @@ if button:
 
             if(api.get_action()==0):
                 drift_time = datetime.datetime.now().strftime("%H:%M:%S")
-                st.toast(f':red[Un drift est détecté à partir de la donnée d'indice  {i+1-window_size} à {drift_time}]', icon="⚠️")
-                st.error(f'Un drift est détecté à partir de la donnée d'indice  {i+1-window_size} à {drift_time}', icon="⚠️")
+                st.toast(f":red[Un drift est détecté à partir de la donnée d'indice  {i+1-window_size} à {drift_time}]", icon="⚠️")
+                st.error(f"Un drift est détecté à partir de la donnée d'indice  {i+1-window_size} à {drift_time}", icon="⚠️")
                 drift_type=api.identifyType()
                 if(drift_type != None):
                     if drift_type == ot2d.DriftType.GRADUAL:
