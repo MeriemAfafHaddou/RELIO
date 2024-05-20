@@ -26,7 +26,7 @@ st.write("""
 # Dataset choice
 option = st.selectbox(
     ":bar_chart: Quel dataset voulez vous choisir?",
-    ("Asfault", "Outdoor Objects", "Insects : Incrémental"))
+    ("Asfault", "Outdoor Objects", "Ozone"))
 
 if option == "Asfault":
     df=pd.read_csv("data/Asfault.csv", header=None)[:5000]
@@ -45,8 +45,16 @@ elif option == "Outdoor Objects":
     detect_thold=5.0
     win_size=500
   
-elif option == "Insects : Incrémental":
-    df=pd.read_csv("data/insects_incremental.csv", header=None)[14500:19500]
+elif option == "Ozone":
+    df=pd.read_csv('data/Ozone.csv', header=None)
+    label_encoder = LabelEncoder()
+    df['class'] = label_encoder.fit_transform(df[72])
+    class_mapping = dict(zip(label_encoder.classes_, label_encoder.transform(label_encoder.classes_)))
+    df = df.drop(72,axis='columns')
+    df.columns= df.columns.astype(str)
+    alert_thold=7.6
+    detect_thold=8.6
+    win_size=200
 
 
 #Modify parameters
