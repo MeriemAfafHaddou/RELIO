@@ -29,7 +29,7 @@ option = st.selectbox(
     ("Asfault", "Insects : Graduel", "Insects : Incrémental"))
 
 if option == "Asfault":
-    df=pd.read_csv("data/Asfault.csv", header=None)[:8000]
+    df=pd.read_csv("data/Asfault.csv", header=None)[:5000]
     label_encoder = LabelEncoder()
     df['class'] = label_encoder.fit_transform(df[64])
     class_mapping = dict(zip(label_encoder.classes_, label_encoder.transform(label_encoder.classes_)))
@@ -37,6 +37,7 @@ if option == "Asfault":
     df.columns= df.columns.astype(str)
     alert_thold=6.5
     detect_thold=7.0
+    win_size=250
 
 elif option == "Insects : Graduel":
     df=pd.read_csv("data/insects_gradual.csv", header=None)[7000:15000]
@@ -49,7 +50,7 @@ with st.popover(":gear: Modifier les paramètres"):
     st.write("""
      :gear: Modifier les paramètres du test 
      """)
-    window_size = st.number_input('Introduire la taille de la fenêtre', min_value=1, value=500, placeholder="Taille de la fenêtre")
+    window_size = st.number_input('Introduire la taille de la fenêtre', min_value=1, value=win_size, placeholder="Taille de la fenêtre")
     metric_input=st.selectbox('Choisir la métrique de détection', ['Wasserstein d\'ordre 1', 'Wasserstein d\'ordre 2', 'Wasserstein régularisé'], index=1)
     cost_input=st.selectbox('Choisir la fonction de coût', ['Euclidienne', 'Euclidienne Standarisée', 'Mahalanobis'], index=1)
     if metric_input == 'Wasserstein d\'ordre 1':
@@ -120,6 +121,9 @@ if button:
     ##### :bar_chart: Évolution de la distribution de données : 
     """)
     chart = st.empty()
+    st.write(f"""
+        La variance expliquée = {pca.explained_variance_ratio_[0]}
+    """)
 
     st.write(f"""
     ##### 	:chart_with_upwards_trend: Évolution de la distance de {metric_input} entre la distribution de référence et la fenêtre courante  : 
@@ -195,7 +199,7 @@ if button:
                 alert_time = datetime.datetime.now().strftime("%H:%M:%S")
                 st.toast(f"Alerte : Un petit changement de distribution s'est produit  à partir de la donnée d'indice {i+1-window_size} à {alert_time}!", icon="❗")
                 st.warning(f"Alerte : Un petit changement de distribution s'est produit  à partir de la donnée d'indice {i+1-window_size} à {alert_time}!", icon="❗")
-                model.partial_fit(win_X, win_y, classes=all_classes)
+                model.partial_fit(win_X, win_y)
                 api.reset_ajust_model()
             current_window=[]
         drift_type=api.identifyType()
