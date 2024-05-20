@@ -27,14 +27,14 @@ st.write("""
 """)
 # Dataset choice
 option = st.selectbox(
-    "Quel dataset voulez vous choisir?",
+    ":bar_chart: Quel dataset voulez vous choisir?",
     ("Insects : Soudain", "Insects : Graduel", "Insects : Incrémental"))
 df = pd.read_csv("data/iris_sudden.csv")
 
 if option == "Insects : Soudain":
     df=pd.read_csv("data/insects_sudden.csv", header=None)[14500:19500]
 elif option == "Insects : Graduel":
-    df=pd.read_csv("data/insects_gradual.csv", header=None)[10000:15000]
+    df=pd.read_csv("data/insects_gradual.csv", header=None)[7000:15000]
 elif option == "Insects : Incrémental":
     df=pd.read_csv("data/insects_incremental.csv", header=None)[14500:19500]
 
@@ -104,7 +104,7 @@ if button:
     distances=st.empty()
 
     st.write(f"""
-    ##### 	:chart_with_upwards_trend: Évolution de la précision : 
+    ##### 	📉 Évolution de la précision : 
     """) 
     accuracy_chart=st.empty()
 
@@ -145,8 +145,8 @@ if button:
 
             if(api.get_action()==0):
                 drift_time = datetime.datetime.now().strftime("%H:%M:%S")
-                st.toast(f':red[Un drift est détecté au point de données {i+1-window_size} à {drift_time}]', icon="⚠️")
-                st.error(f'Un drift est détecté au point de données {i+1-window_size} à {drift_time}', icon="⚠️")
+                st.toast(f":red[Un drift est détecté à partir de la donnée d'indice  {i+1-window_size} à {drift_time}]", icon="⚠️")
+                st.error(f"Un drift est détecté à partir de la donnée d'indice  {i+1-window_size} à {drift_time}", icon="⚠️")
                 drift_type=api.identifyType()
                 if(drift_type != None):
                     if drift_type == ot2d.DriftType.GRADUAL:
@@ -168,8 +168,8 @@ if button:
                     'penalty': ['l2', 'l1', 'elasticnet'],
                     'max_iter': [1000, 2000, 3000]
                 }
-
-                grid_search = GridSearchCV(estimator=SGDClassifier(), param_grid=param_grid, cv=5, scoring='accuracy')
+                print(f"UNIQUE : {np.unique(win_y)}")
+                grid_search = GridSearchCV(estimator=SGDClassifier(), param_grid=param_grid, cv=5, scoring='accuracy', error_score='raise')
                 grid_search.fit(win_X, win_y)
                 
                 best_params = grid_search.best_params_
@@ -179,7 +179,8 @@ if button:
                 model = SGDClassifier(**best_params)
                 model.fit(win_X, win_y)
             elif (api.get_action()==1):
-                st.toast(f"Alerte : Un petit changement de distribution s'est produit !")
+                st.toast(f"Alerte : Un petit changement de distribution s'est produit !", icon="❗")
+                st.warning(f"Alerte : Un petit changement de distribution s'est produit !", icon="❗")
                 model.partial_fit(win_X, win_y)
             current_window=[]
         drift_type=api.identifyType()

@@ -90,8 +90,8 @@ if button:
             distances.line_chart(distances_data, color=["#FFAC1C","#338AFF", "#FF0D0D"])
             if(api.get_action()==0):
                 drift_time = datetime.datetime.now().strftime("%H:%M:%S")
-                st.toast(f':ed[Un drift est détecté au point de données {i+1-window_size} à {drift_time}]', icon="⚠️")
-                st.error(f'Un drift est détecté au point de données {i+1-window_size} à {drift_time}', icon="⚠️")
+                st.toast(f':ed[Un drift est détecté à partir de la donnée d'indice  {i+1-window_size} à {drift_time}]', icon="⚠️")
+                st.error(f'Un drift est détecté à partir de la donnée d'indice  {i+1-window_size} à {drift_time}', icon="⚠️")
                 drift_type=api.identifyType()
                 if(drift_type != None):
                     if drift_type == ot2d.DriftType.GRADUAL:
@@ -123,4 +123,4 @@ if button:
                 st.toast(f':blue[Le type de drift est : Incrémental]', icon="📌")
                 st.info(f'Le type de drift est : Incrémental', icon="📌")
         # Pause for a moment
-        time.sleep(0.05)
+        time.sleep(0.1)

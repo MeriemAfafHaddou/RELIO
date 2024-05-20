@@ -40,9 +40,9 @@ with st.popover(":gear: Modifier les paramètres"):
         cost_function = ot2d.CostFunction.SEUCLIDEAN
     elif cost_input == 'Mahalanobis':    
         cost_function = ot2d.CostFunction.MAHALANOBIS
-    alert_thold=st.number_input('Introduire le seuil d\'alerte', min_value=0.1, value=0.8, placeholder="Seuil d'alerte")
+    alert_thold=st.number_input('Introduire le seuil d\'alerte', min_value=0.1, value=0.9, placeholder="Seuil d'alerte")
     detect_thold=st.number_input('Introduire le seuil de détection', min_value=0.1, value=1.2, placeholder="Seuil de détection")
-    stblty_thold=st.number_input('Introduire le seuil de stabilité', min_value=1, value=4, placeholder="Seuil de stabilité")
+    stblty_thold=st.number_input('Introduire le seuil de stabilité', min_value=1, value=3, placeholder="Seuil de stabilité")
 
 api=ot2d.OT2D(window_size, alert_thold, detect_thold, ot_metric, cost_function, stblty_thold )
 ref_dist=[]
@@ -75,19 +75,15 @@ if button:
     """)
     for i in range(window_size, len(df)+1):
         # Plot the data from the start to the current point
-        chart.line_chart(df[['petal_length', 'petal_width']].iloc[:i])
+        chart.line_chart(df.iloc[:i])
         current_window.append(df.iloc[i-1])
         if len(current_window) == window_size:
             api.set_curr_win(np.array(current_window))
             api.monitorDrift()
-            distances_data=pd.DataFrame(api.get_distances()[:i], columns=['Distance'])
-            distances_data['Alerte']=alert_thold
-            distances_data['Détection']=detect_thold
-            distances.line_chart(distances_data, color=["#FFAC1C","#338AFF", "#FF0D0D"])
             if(api.get_action()==0):
                 drift_time = datetime.datetime.now().strftime("%H:%M:%S")
-                st.toast(f':red[Un drift est détecté au point de données {i+1-window_size} à {drift_time}]', icon="⚠️")
-                st.error(f'Un drift est détecté au point de données {i+1-window_size} à {drift_time}', icon="⚠️")
+                st.toast(f":red[Un drift est détecté à partir de la donnée d'indice  {i+1-window_size} à {drift_time}]", icon="⚠️")
+                st.error(f"Un drift est détecté à partir de la donnée d'indice  {i+1-window_size} à {drift_time}", icon="⚠️")
                 drift_type=api.identifyType()
                 if(drift_type != None):
                     if drift_type == ot2d.DriftType.GRADUAL:
@@ -103,6 +99,11 @@ if button:
                         st.toast(f':blue[Le type de drift est : Incrémental]', icon="📌")
                         st.info(f'Le type de drift est : Incrémental', icon="📌")
                 api.reset_retrain_model()
+            distances_data=pd.DataFrame(api.get_distances()[:i], columns=['Distance'])
+            distances_data['Alerte']=alert_thold
+            distances_data['Détection']=detect_thold
+            distances.line_chart(distances_data, color=["#FFAC1C","#338AFF", "#FF0D0D"])
+
             current_window=[]
         drift_type=api.identifyType()
         if(drift_type != None):
