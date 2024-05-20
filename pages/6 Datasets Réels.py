@@ -35,6 +35,8 @@ if option == "Asfault":
     class_mapping = dict(zip(label_encoder.classes_, label_encoder.transform(label_encoder.classes_)))
     df = df.drop(64,axis='columns')
     df.columns= df.columns.astype(str)
+    alert_thold=6.5
+    detect_thold=7.0
 
 elif option == "Insects : Graduel":
     df=pd.read_csv("data/insects_gradual.csv", header=None)[7000:15000]
@@ -45,7 +47,7 @@ elif option == "Insects : Incrémental":
 #Modify parameters
 with st.popover(":gear: Modifier les paramètres"):
     st.write("""
-     :gear: Modifier les paramètres de la simulation 
+     :gear: Modifier les paramètres du test 
      """)
     window_size = st.number_input('Introduire la taille de la fenêtre', min_value=1, value=500, placeholder="Taille de la fenêtre")
     metric_input=st.selectbox('Choisir la métrique de détection', ['Wasserstein d\'ordre 1', 'Wasserstein d\'ordre 2', 'Wasserstein régularisé'], index=1)
@@ -63,9 +65,9 @@ with st.popover(":gear: Modifier les paramètres"):
         cost_function = ot2d.CostFunction.SEUCLIDEAN
     elif cost_input == 'Mahalanobis':    
         cost_function = ot2d.CostFunction.MAHALANOBIS
-    alert_thold=st.number_input('Introduire le seuil d\'alerte', min_value=0.1, value=7.5, placeholder="Seuil d'alerte")
-    detect_thold=st.number_input('Introduire le seuil de détection', min_value=0.1, value=8.5, placeholder="Seuil de détection")
-    stblty_thold=st.number_input('Introduire le seuil de stabilité', min_value=1, value=4, placeholder="Seuil de stabilité")
+    alert_thold=st.number_input('Introduire le seuil d\'alerte', min_value=0.1, value=alert_thold, placeholder="Seuil d'alerte")
+    detect_thold=st.number_input('Introduire le seuil de détection', min_value=0.1, value=detect_thold, placeholder="Seuil de détection")
+    stblty_thold=st.number_input('Introduire le seuil de stabilité', min_value=1, value=3, placeholder="Seuil de stabilité")
 
 #API initialization
 api=ot2d.OT2D(window_size, alert_thold, detect_thold, ot_metric, cost_function, stblty_thold )
@@ -80,20 +82,37 @@ current_window=[]
 drift_impacts=[]
 accuracies=[]
 
-model = SGDClassifier()
 drifted_model=SGDClassifier()
-train_X = np.array(ref_dist)[:, :-1]
-train_y = np.array(ref_dist)[:, -1].astype(int)
-model.fit(train_X, train_y)
-drifted_model=model
-
-st.write(f"""
-:small_red_triangle_down: Taille de la fenêtre : ***{window_size} Données*** \n
-:small_red_triangle_down: Métrique de détection : ***{metric_input}*** \n
-:small_red_triangle_down: Fonction de coût : ***{cost_input}***
+ref_dist_X = np.array(ref_dist)[:, :-1]
+ref_dist_y = np.array(ref_dist)[:, -1].astype(int)
+all_classes=np.unique(np.array(df)[:,-1].astype(int))
+col1, col2 = st.columns(2)
+with col1:
+    st.write(f"""
+    :small_red_triangle_down: Taille de la fenêtre : ***{window_size} Données*** \n
+    :small_red_triangle_down: Métrique de détection : ***{metric_input}*** \n
+    :small_red_triangle_down: Fonction de coût : ***{cost_input}***
+         """)
+with col2:
+    st.write(f"""
+    :small_red_triangle_down: Seuil d'alerte : ***{alert_thold}*** \n
+    :small_red_triangle_down: Seuil de détection : ***{detect_thold}*** \n
+    :small_red_triangle_down: Seuil de stabilité : ***{stblty_thold} fenêtres***
          """)
 pc1 = pca.fit_transform(df)
-button=st.button(":arrow_forward: Lancer la simulation", type="primary")
+button=st.button(":arrow_forward: Lancer le test ", type="primary")
+param_grid = {
+    'alpha': [0.0001, 0.001, 0.01, 0.1],
+    'penalty': ['l2', 'l1', 'elasticnet'],
+    'max_iter': [1000, 2000, 3000]
+}
+grid_search = GridSearchCV(estimator=SGDClassifier(), param_grid=param_grid, cv=5, scoring='accuracy', error_score='raise')
+grid_search.fit(ref_dist_X, ref_dist_y)
+best_params = grid_search.best_params_
+model = SGDClassifier(**best_params, random_state=42)
+model.partial_fit(ref_dist_X, ref_dist_y, all_classes)
+drifted_model=SGDClassifier(**best_params,random_state=42)
+drifted_model.partial_fit(ref_dist_X, ref_dist_y, all_classes)
 if button:
     st.toast("Initialisation de l'API en cours...", icon="⏳")
 
@@ -132,10 +151,9 @@ if button:
             accuracy = accuracy_score(y_pred, win_y)
             accuracies.append(accuracy)
 
-            y_pred=drifted_model.predict(win_X)
-            drifted_accuracy=accuracy_score(y_pred, win_y)
-            drift_impacts.append(drifted_accuracy)
-            
+            y_pred_drift=drifted_model.predict(win_X)
+            drifted_accuracy=accuracy_score(y_pred_drift, win_y)
+            drift_impacts.append(drifted_accuracy)            
 
             distances_data=pd.DataFrame(api.get_distances()[:i], columns=['Distance'])
             distances_data['Alerte']=alert_thold
@@ -149,8 +167,8 @@ if button:
 
             if(api.get_action()==0):
                 drift_time = datetime.datetime.now().strftime("%H:%M:%S")
-                st.toast(f':red[Un drift est détecté à partir de la donnée d'indice  {i+1-window_size} à {drift_time}]', icon="⚠️")
-                st.error(f'Un drift est détecté à partir de la donnée d'indice  {i+1-window_size} à {drift_time}', icon="⚠️")
+                st.toast(f":red[Un drift est détecté à partir de la donnée d'indice  {i+1-window_size} à {drift_time}]", icon="⚠️")
+                st.error(f"Un drift est détecté à partir de la donnée d'indice  {i+1-window_size} à {drift_time}", icon="⚠️")
                 drift_type=api.identifyType()
                 if(drift_type != None):
                     if drift_type == ot2d.DriftType.GRADUAL:
@@ -167,26 +185,18 @@ if button:
                         st.info(f'Le type de drift est : Incrémental', icon="📌")
                 api.reset_retrain_model()
 
-                param_grid = {
-                    'alpha': [0.0001, 0.001, 0.01, 0.1],
-                    'penalty': ['l2', 'l1', 'elasticnet'],
-                    'max_iter': [1000, 2000, 3000]
-                }
-                
                 print(f"UNIQUE : {np.unique(win_y)}")
-                grid_search = GridSearchCV(estimator=SGDClassifier(), param_grid=param_grid, cv=5, scoring='accuracy', error_score='raise')
-                grid_search.fit(win_X, win_y)
-                
-                best_params = grid_search.best_params_
-                print("Best hyperparameters found:", best_params)
-                
-                # Réentraîner le modèle avec les nouveaux hyperparamètres
-                model = SGDClassifier(**best_params)
-                model.fit(win_X, win_y)
+                train_X=np.concatenate((ref_dist_X, win_X))
+                train_y=np.concatenate((ref_dist_y, win_y))
+                model.fit(train_X, train_y)
+                ref_dist_X=win_X
+                ref_dist_y=win_y
             elif (api.get_action()==1):
-                st.toast(f"Alerte : Un petit changement de distribution s'est produit !", icon="❗")
-                st.warning(f"Alerte : Un petit changement de distribution s'est produit !", icon="❗")
-                # model.partial_fit(win_X, win_y,classes=np.unique(win_y))
+                alert_time = datetime.datetime.now().strftime("%H:%M:%S")
+                st.toast(f"Alerte : Un petit changement de distribution s'est produit  à partir de la donnée d'indice {i+1-window_size} à {alert_time}!", icon="❗")
+                st.warning(f"Alerte : Un petit changement de distribution s'est produit  à partir de la donnée d'indice {i+1-window_size} à {alert_time}!", icon="❗")
+                model.partial_fit(win_X, win_y, classes=all_classes)
+                api.reset_ajust_model()
             current_window=[]
         drift_type=api.identifyType()
         if(drift_type != None):
