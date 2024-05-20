@@ -79,7 +79,7 @@ class OT2D:
   __ajust_model=False
   __concerned_win=[]
   __ot_distances=[]
-  __alert=True
+  __alert=False
   __abrupt=False
   __reappearing=False
   __reappearing_count=0

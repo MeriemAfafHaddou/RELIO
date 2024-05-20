@@ -26,7 +26,7 @@ st.write("""
 # Dataset choice
 option = st.selectbox(
     ":bar_chart: Quel dataset voulez vous choisir?",
-    ("Asfault", "Insects : Graduel", "Insects : Incrémental"))
+    ("Asfault", "Outdoor Objects", "Insects : Incrémental"))
 
 if option == "Asfault":
     df=pd.read_csv("data/Asfault.csv", header=None)[:5000]
@@ -39,8 +39,12 @@ if option == "Asfault":
     detect_thold=7.0
     win_size=250
 
-elif option == "Insects : Graduel":
-    df=pd.read_csv("data/insects_gradual.csv", header=None)[7000:15000]
+elif option == "Outdoor Objects":
+    df=pd.read_csv("data/outdoor.csv", header=None)
+    alert_thold=4.5
+    detect_thold=5.0
+    win_size=500
+  
 elif option == "Insects : Incrémental":
     df=pd.read_csv("data/insects_incremental.csv", header=None)[14500:19500]
 
@@ -122,7 +126,7 @@ if button:
     """)
     chart = st.empty()
     st.write(f"""
-        La variance expliquée = {pca.explained_variance_ratio_[0]}
+       🔻 Qualité de la présentation de l'axe 1 =  **{pca.explained_variance_ratio_[0]:.2f}**
     """)
 
     st.write(f"""
