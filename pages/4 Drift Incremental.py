@@ -138,7 +138,7 @@ if button:
     """)
     for i in range(window_size, len(df)+1):
         # Plot the data from the start to the current point
-        chart.line_chart(df['petal_width'].iloc[:i])
+        chart.line_chart(df.iloc[:i])
         current_window.append(df.iloc[i-1])
         if len(current_window) == window_size:
             api.set_curr_win(np.array(current_window))
