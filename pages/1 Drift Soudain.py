@@ -64,7 +64,7 @@ ref_dist_X = np.array(ref_dist)[:, :-1]
 ref_dist_y = np.array(ref_dist)[:, -1].astype(int)
 all_classes=np.unique(np.array(df)[:,-1].astype(int))
 st.write(f"""
-    :small_red_triangle_down: Type de modèle : ***{model_type} Données***
+    :small_red_triangle_down: Type de modèle : ***{model_type}***
 """)
 col1, col2 = st.columns(2)
 with col1:
