@@ -7,6 +7,8 @@ import datetime
 from sklearn.linear_model import SGDClassifier
 from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import accuracy_score
+from sklearn.cluster import MiniBatchKMeans
+from sklearn.metrics import silhouette_score
 
 st.write("""
 # OT2D : Simulation d'un drift soudain
@@ -27,6 +29,7 @@ with st.popover(":gear: Modifier les paramètres"):
     st.write("""
      :gear: Modifier les paramètres de la simulation 
      """)
+    model_type=st.selectbox('Choisir le type de modèle', ["Supervisé - Stochastic Gradient Descent", "Non supervisé - KMeans"])
     window_size = st.number_input('Introduire la taille de la fenêtre', min_value=1, value=50, placeholder="Taille de la fenêtre")
     metric_input=st.selectbox('Choisir la métrique de détection', ['Wasserstein d\'ordre 1', 'Wasserstein d\'ordre 2', 'Wasserstein régularisé'], index=1)
     cost_input=st.selectbox('Choisir la fonction de coût', ['Euclidienne', 'Euclidienne Standarisée', 'Mahalanobis'], index=1)
@@ -56,11 +59,13 @@ api.add_concept(first_concept)
 api.set_curr_concept(first_concept)
 current_window=[]
 drift_impacts=[]
-accuracies=[]
+adapt_perform=[]
 ref_dist_X = np.array(ref_dist)[:, :-1]
 ref_dist_y = np.array(ref_dist)[:, -1].astype(int)
 all_classes=np.unique(np.array(df)[:,-1].astype(int))
-
+st.write(f"""
+    :small_red_triangle_down: Type de modèle : ***{model_type} Données***
+""")
 col1, col2 = st.columns(2)
 with col1:
     st.write(f"""
@@ -76,33 +81,53 @@ with col2:
          """)
 
 button=st.button(":arrow_forward: Lancer la simulation", type="primary")
-param_grid = {
-    'alpha': [0.0001, 0.001, 0.01, 0.1],
-    'penalty': ['l2', 'l1', 'elasticnet'],
-    'max_iter': [1000, 2000, 3000]
-}
-grid_search = GridSearchCV(estimator=SGDClassifier(), param_grid=param_grid, cv=5, scoring='accuracy', error_score='raise')
-grid_search.fit(ref_dist_X, ref_dist_y)
-best_params = grid_search.best_params_
-model = SGDClassifier(**best_params, random_state=42)
-model.partial_fit(ref_dist_X, ref_dist_y, all_classes)
-drifted_model=SGDClassifier(**best_params,random_state=42)
-drifted_model.partial_fit(ref_dist_X, ref_dist_y, all_classes)
+if model_type== "Supervisé - Stochastic Gradient Descent":
+    param_grid = {
+        'alpha': [0.0001, 0.001, 0.01, 0.1],
+        'penalty': ['l2', 'l1', 'elasticnet'],
+        'max_iter': [1000, 2000, 3000]
+    }
+    grid_search = GridSearchCV(estimator=SGDClassifier(), param_grid=param_grid, cv=5, scoring='accuracy', error_score='raise')
+    grid_search.fit(ref_dist_X, ref_dist_y)
+    best_params = grid_search.best_params_
+    model = SGDClassifier(**best_params, random_state=42)
+    model.partial_fit(ref_dist_X, ref_dist_y, all_classes)
+    drifted_model=SGDClassifier(**best_params,random_state=42)
+    drifted_model.partial_fit(ref_dist_X, ref_dist_y, all_classes)
+    metric_name="de la Précision"
+elif model_type == "Non supervisé - KMeans":
+    silhouette_avg = []
+    K = range(2, 11)  # Nombre de clusters à tester de 2 à 10 (car silhouette_score n'est pas défini pour k=1)
+    for k in K:
+        kmeans = MiniBatchKMeans(n_clusters=k, random_state=42)
+        cluster_labels = kmeans.fit_predict(ref_dist_X)
+        silhouette_avg.append(silhouette_score(ref_dist_X, cluster_labels))
+    n=np.argmax(silhouette_avg)+2
+    model= MiniBatchKMeans(n_clusters=n, random_state=42)
+    drifted_model=MiniBatchKMeans(n_clusters=n, random_state=42)
+    model=model.fit(ref_dist_X)
+    cluster_labels_model=model.labels_
+    drifted_model=drifted_model.fit(ref_dist_X)
+    cluster_labels_drift=drifted_model.labels_
+    adapt_perform.append(silhouette_score(ref_dist_X, cluster_labels_model))
+    drift_impacts.append(silhouette_score(ref_dist_X,cluster_labels_drift))
+    metric_name="du Score Silhouette"
 if button:
     st.toast("Initialisation de l'API en cours...", icon="⏳")
     st.write("""
     ##### :bar_chart: Évolution de la distribution de données : 
     """)
     chart = st.empty()
+    
     st.write(f"""
     ##### 	:chart_with_upwards_trend: Évolution de la distance de {metric_input} entre la distribution de référence et la fenêtre courante  : 
     """)
     distances=st.empty()
     st.divider()
     st.write(f"""
-    ##### 	📉 Évolution de la précision : 
+    ##### 	📉 Évolution {metric_name} : 
     """) 
-    accuracy_chart=st.empty()
+    metric_chart=st.empty()
 
     st.divider()
 
@@ -118,19 +143,12 @@ if button:
             api.monitorDrift()
             win_X=np.array(current_window)[:, :-1]
             win_y=np.array(current_window)[:, -1].astype(int)
+            if model_type== "Supervisé - Stochastic Gradient Descent":
+                y_pred = model.predict(win_X)
+                metric = accuracy_score(y_pred, win_y)
 
-            y_pred = model.predict(win_X)
-            accuracy = accuracy_score(y_pred, win_y)
-            accuracies.append(accuracy)
-
-            y_pred_drift=drifted_model.predict(win_X)
-            drifted_accuracy=accuracy_score(y_pred_drift, win_y)
-            drift_impacts.append(drifted_accuracy)  
-
-            accuracy_data=pd.DataFrame()
-            accuracy_data['Avec adaptation']=accuracies[:i]
-            accuracy_data['Sans adaptation']=drift_impacts[:i]
-            accuracy_chart.line_chart(accuracy_data, color=["#338AFF", "#FF0D0D"])
+                y_pred_drift=drifted_model.predict(win_X)
+                drifted_metric=accuracy_score(y_pred_drift, win_y)
  
             if(api.get_action()==0):
                 drift_time = datetime.datetime.now().strftime("%H:%M:%S")
@@ -153,20 +171,39 @@ if button:
                 api.reset_retrain_model()
                 train_X=np.concatenate((ref_dist_X, win_X))
                 train_y=np.concatenate((ref_dist_y, win_y))
-                model.fit(train_X, train_y)
+                if model_type== "Supervisé - Stochastic Gradient Descent":
+                    model.fit(train_X, train_y)
+                elif model_type == "Non supervisé - KMeans":
+                    labels = model.fit(train_X)                
                 ref_dist_X=win_X
                 ref_dist_y=win_y
             elif (api.get_action()==1):
                 alert_time = datetime.datetime.now().strftime("%H:%M:%S")
                 st.toast(f"Alerte : Un petit changement de distribution s'est produit  à partir de la donnée d'indice {i+1-window_size} à {alert_time}!", icon="❗")
                 st.warning(f"Alerte : Un petit changement de distribution s'est produit  à partir de la donnée d'indice {i+1-window_size} à {alert_time}!", icon="❗")
-                model.partial_fit(win_X, win_y)
+                if model_type== "Supervisé - Stochastic Gradient Descent":
+                    model.partial_fit(train_X, train_y)
+                elif model_type == "Non supervisé - KMeans":
+                    model.partial_fit(train_X)                
                 api.reset_ajust_model()
 
             distances_data=pd.DataFrame(api.get_distances()[:i], columns=['Distance'])
             distances_data['Alerte']=alert_thold
             distances_data['Détection']=detect_thold
             distances.line_chart(distances_data, color=["#FFAC1C","#338AFF", "#FF0D0D"])
+            
+            if model_type == "Non supervisé - KMeans":
+                labels = model.predict(win_X)
+                labels_drift=drifted_model.predict(win_X)
+                metric = silhouette_score(win_X, labels)  
+                drifted_metric=silhouette_score(win_X, labels_drift)          
+            adapt_perform.append(metric)
+            drift_impacts.append(drifted_metric)  
+
+            metric_data=pd.DataFrame()
+            metric_data['Avec adaptation']=adapt_perform[:i]
+            metric_data['Sans adaptation']=drift_impacts[:i]
+            metric_chart.line_chart(metric_data, color=["#338AFF", "#FF0D0D"])
 
             current_window=[]
         drift_type=api.identifyType()
