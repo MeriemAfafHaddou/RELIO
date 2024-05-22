@@ -80,7 +80,6 @@ current_window=[]
 drift_impacts=[]
 adapt_perform=[]
 
-drifted_model=SGDClassifier()
 ref_dist_X = np.array(ref_dist)[:, :-1]
 ref_dist_y = np.array(ref_dist)[:, -1].astype(int)
 all_classes=np.unique(np.array(df)[:,-1].astype(int))
