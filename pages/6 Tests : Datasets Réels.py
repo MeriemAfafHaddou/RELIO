@@ -9,20 +9,18 @@ from sklearn.linear_model import SGDClassifier
 from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import accuracy_score
 from sklearn.decomposition import PCA
+from sklearn.preprocessing import LabelEncoder
 from sklearn.cluster import MiniBatchKMeans
 from sklearn.metrics import silhouette_score
 
 pca = PCA(n_components=1)
 st.write("""
-# OT2D : Tests sur des Datasets Synthétiques
+# OT2D : Tests sur des Datasets Réels
 """)
-with st.expander(":blue[:question: Qu'est-ce qu'un dataset synthétique ?]",expanded=False):
+
+with st.expander(":blue[:question: Comment évaluer notre solution sur un dataset réel ?]",expanded=False):
     st.write('''
-        Un dataset synthétique est un ensemble de données générées artificiellement pour simuler un scénario particulier. Dans notre cas, nous utiliserons des datasets générés par la bibliothèque River pour simuler des scénarios de changement de distribution.
-    ''')
-with st.expander(":blue[:question: Comment valider notre solution sur ces datasets ?]",expanded=False):
-    st.write('''
-        Nous allons tester la fiabilité de notre solution sur des datasets synthétiques, en surveillant les performances du modèle supervisé ou non supervisé.
+        Nous allons tester notre solution sur des datasets réels pour évaluer sa capacité à détecter les différents types de drifts, en surveillant les performances du modèle supervisé ou non supervisé.
     ''')
 st.write("""
          ### Test : 
@@ -30,16 +28,47 @@ st.write("""
 # Dataset choice
 option = st.selectbox(
     ":bar_chart: Quel dataset voulez vous choisir?",
-    ("Insects : Soudain", "Insects : Incrémental"))
-if option == "Insects : Soudain":
-    df=pd.read_csv("data/insects_sudden.csv", header=None)[9800:13800]
-    alert_thold=5.4
-    detect_thold=6.2
-elif option == "Insects : Incrémental":
-    df=pd.read_csv("data/insects_incremental.csv", header=None)[32000:37000]
-    alert_thold=4.7
-    detect_thold=5.3
-all_classes=np.array(df)[:,-1]
+    ("Asfault", "Electricity","Outdoor Objects", "Ozone"))
+
+if option == "Asfault":
+    df=pd.read_csv("data/Asfault.csv", header=None)[:5000]
+    label_encoder = LabelEncoder()
+    df['class'] = label_encoder.fit_transform(df[64])
+    class_mapping = dict(zip(label_encoder.classes_, label_encoder.transform(label_encoder.classes_)))
+    df = df.drop(64,axis='columns')
+    df.columns= df.columns.astype(str)
+    alert_thold=6.5
+    detect_thold=7.0
+    win_size=250
+
+elif option == "Electricity":
+    df=pd.read_csv('data/electricity.csv')[:8000]
+    label_encoder = LabelEncoder()
+    df['Class'] = label_encoder.fit_transform(df['class'])
+    class_mapping = dict(zip(label_encoder.classes_, label_encoder.transform(label_encoder.classes_)))
+    df = df.drop('class',axis='columns')
+    df.columns= df.columns.astype(str)
+    alert_thold=2.2
+    detect_thold=2.3
+    win_size=500
+
+elif option == "Outdoor Objects":
+    df=pd.read_csv("data/outdoor.csv", header=None)
+    alert_thold=4.5
+    detect_thold=5.0
+    win_size=500
+  
+elif option == "Ozone":
+    df=pd.read_csv('data/Ozone.csv', header=None)
+    label_encoder = LabelEncoder()
+    df['class'] = label_encoder.fit_transform(df[72])
+    class_mapping = dict(zip(label_encoder.classes_, label_encoder.transform(label_encoder.classes_)))
+    df = df.drop(72,axis='columns')
+    df.columns= df.columns.astype(str)
+    alert_thold=6.0
+    detect_thold=7.0
+    win_size=200
+
 
 #Modify parameters
 with st.popover(":gear: Modifier les paramètres"):
@@ -47,7 +76,7 @@ with st.popover(":gear: Modifier les paramètres"):
      :gear: Modifier les paramètres du test 
      """)
     model_type=st.selectbox('Choisir le type de modèle', ["Supervisé - Stochastic Gradient Descent", "Non supervisé - KMeans"])
-    window_size = st.number_input('Introduire la taille de la fenêtre', min_value=1, value=500, placeholder="Taille de la fenêtre")
+    window_size = st.number_input('Introduire la taille de la fenêtre', min_value=1, value=win_size, placeholder="Taille de la fenêtre")
     metric_input=st.selectbox('Choisir la métrique de détection', ['Wasserstein d\'ordre 1', 'Wasserstein d\'ordre 2', 'Wasserstein régularisé'], index=1)
     cost_input=st.selectbox('Choisir la fonction de coût', ['Euclidienne', 'Euclidienne Standarisée', 'Mahalanobis'], index=1)
     if metric_input == 'Wasserstein d\'ordre 1':
@@ -86,6 +115,7 @@ all_classes=np.unique(np.array(df)[:,-1].astype(int))
 st.write(f"""
     :small_red_triangle_down: Type de modèle : ***{model_type}***
 """)
+
 col1, col2 = st.columns(2)
 with col1:
     st.write(f"""
@@ -139,6 +169,9 @@ if button:
     ##### :bar_chart: Évolution de la distribution de données : 
     """)
     chart = st.empty()
+    st.write(f"""
+       🔻 Qualité de la présentation de l'axe 1 =  **{pca.explained_variance_ratio_[0]:.2f}**
+    """)
 
     st.write(f"""
     ##### 	:chart_with_upwards_trend: Évolution de la distance de {metric_input} entre la distribution de référence et la fenêtre courante  : 
@@ -173,6 +206,7 @@ if button:
                 y_pred_drift=drifted_model.predict(win_X)
                 drifted_metric=accuracy_score(y_pred_drift, win_y)
  
+
             if(api.get_action()==0):
                 drift_time = datetime.datetime.now().strftime("%H:%M:%S")
                 st.toast(f":red[Un drift est détecté à partir de la donnée d'indice  {i+1-window_size} à {drift_time}]", icon="⚠️")
@@ -203,8 +237,8 @@ if button:
                     K = range(2, 11)  # Nombre de clusters à tester de 2 à 10 (car silhouette_score n'est pas défini pour k=1)
                     for k in K:
                         kmeans = MiniBatchKMeans(n_clusters=k, random_state=42)
-                        cluster_labels = kmeans.fit_predict(ref_dist_X)
-                        silhouette_avg.append(silhouette_score(ref_dist_X, cluster_labels))
+                        cluster_labels = kmeans.fit_predict(win_X)
+                        silhouette_avg.append(silhouette_score(win_X, cluster_labels))
                     n=np.argmax(silhouette_avg)+2
                     model= MiniBatchKMeans(n_clusters=n, random_state=42)
                     model=model.fit(win_X)
@@ -220,10 +254,8 @@ if button:
                 if model_type== "Supervisé - Stochastic Gradient Descent":
                     model.partial_fit(win_X, win_y, classes=np.unique(win_y))
                 elif model_type == "Non supervisé - KMeans":
-                    model.partial_fit(train_X)                
-
+                    model.partial_fit(win_X)                
                 api.reset_ajust_model()
-
             distances_data=pd.DataFrame(api.get_distances()[:i], columns=['Distance'])
             distances_data['Alerte']=alert_thold
             distances_data['Détection']=detect_thold
@@ -241,7 +273,6 @@ if button:
             metric_data['Avec adaptation']=adapt_perform[:i]
             metric_data['Sans adaptation']=drift_impacts[:i]
             metric_chart.line_chart(metric_data, color=["#338AFF", "#FF0D0D"])
-
 
             current_window=[]
         drift_type=api.identifyType()
