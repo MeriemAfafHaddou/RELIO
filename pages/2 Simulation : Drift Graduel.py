@@ -10,6 +10,10 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import accuracy_score
 from sklearn.cluster import MiniBatchKMeans
 from sklearn.metrics import silhouette_score
+from sklearn.decomposition import PCA
+
+pca = PCA(n_components=1)
+
 
 st.write("""
 # OT2D : Simulation d'un drift graduel
@@ -84,7 +88,7 @@ with col2:
     :small_red_triangle_down: Seuil de détection : ***{detect_thold}*** \n
     :small_red_triangle_down: Seuil de stabilité : ***{stblty_thold} fenêtres***
          """)
-
+pc1 = pca.fit_transform(df)
 button=st.button(":arrow_forward: Lancer la simulation", type="primary")
 if model_type== "Supervisé - Stochastic Gradient Descent":
     param_grid = {
@@ -124,6 +128,9 @@ if button:
     """)
     chart = st.empty()
     st.write(f"""
+       🔻 Qualité de la présentation de l'axe 1 =  **{pca.explained_variance_ratio_[0]:.2f}**
+    """)
+    st.write(f"""
     ##### 	:chart_with_upwards_trend: Évolution de la distance de {metric_input} entre la distribution de référence et la fenêtre courante  : 
     """)
     distances=st.empty()
@@ -140,7 +147,7 @@ if button:
     """)
     for i in range(window_size, len(df)+1):
         # Plot the data from the start to the current point
-        chart.line_chart(df.iloc[:i])
+        chart.line_chart(pc1[:i])
         current_window.append(df.iloc[i-1])
         if len(current_window) == window_size:
             api.set_curr_win(np.array(current_window))
