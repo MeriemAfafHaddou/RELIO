@@ -27,19 +27,19 @@ st.divider()
 st.write("""
 ### ▶️ Simulation des différents types de drifts
 """)
-st.page_link("pages/1 Drift Soudain.py", label="  Drift Soudain", icon="🔻")
-st.page_link("pages/2 Drift Graduel.py", label="  Drift Graduel", icon="🔻")
-st.page_link("pages/3 Drift Recurrent.py", label="  Drift Recurrent", icon="🔻")
-st.page_link("pages/4 Drift Incremental.py", label="  Drift Incremental", icon="🔻")
+st.page_link("pages/1 Simulation : Drift Soudain.py", label=" Simulation : Drift Soudain", icon="🔻")
+st.page_link("pages/2 Simulation : Drift Graduel.py", label=" Simulation : Drift Graduel", icon="🔻")
+st.page_link("pages/3 Simulation : Drift Recurrent.py", label=" Simulation : Drift Recurrent", icon="🔻")
+st.page_link("pages/4 Simulation : Drift Incremental.py", label=" Simulation : Drift Incremental", icon="🔻")
 st.divider()
 st.write("""
 ### ▶️ Tests sur des datasets
 """)
-st.page_link("pages/5 Datasets Synthétiques.py", label="  Datasets Synthétiques", icon="🔻")
-st.page_link("pages/6 Datasets Réels.py", label="  Datasets Réels", icon="🔻")
+st.page_link("pages/5 Tests : Datasets Synthétiques.py", label=" Tests : Datasets Synthétiques", icon="🔻")
+st.page_link("pages/6 Tests : Datasets Réels.py", label=" Tests : Datasets Réels", icon="🔻")
 
 st.divider()
 st.write("""
-### ▶️ Application sur un cas d'étude
+### ▶️ Comparaison avec d'autres solutions
 """)
-st.page_link("pages/7 Application : Réseaux sociaux.py", label="  Réseaux Sociaux", icon="🔻")
+st.page_link("pages/7 Comparaison.py", label=" Comparaison", icon="🔻")

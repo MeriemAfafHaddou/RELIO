@@ -118,19 +118,19 @@ elif model_type == "Non supervisé - KMeans":
 if button:
     st.toast("Initialisation de l'API en cours...", icon="⏳")
     st.write("""
-    ##### :bar_chart: Évolution de la distribution de données : 
+    ##### :bar_chart: Évolution de la distribution de données (Première Composante Principale) : 
     """)
     chart = st.empty()
     st.write(f"""
        🔻 Qualité de la présentation de l'axe 1 =  **{pca.explained_variance_ratio_[0]:.2f}**
     """)
     st.write(f"""
-    ##### 	:chart_with_upwards_trend: Évolution de la distance de {metric_input} entre la distribution de référence et la fenêtre courante  : 
+    ##### 	:chart_with_upwards_trend: Évolution de {metric_input} entre la distribution de référence et la fenêtre courante  : 
     """)
     distances=st.empty()
     st.divider()
     st.write(f"""
-    ##### 	📉 Évolution {metric_name} : 
+    ##### 	📉 Impact du drift soudain - Évolution {metric_name} : 
     """) 
     metric_chart=st.empty()
 
@@ -206,8 +206,8 @@ if button:
             drift_impacts.append(drifted_metric)  
 
             metric_data=pd.DataFrame()
-            metric_data['Avec adaptation']=adapt_perform[:i]
-            metric_data['Sans adaptation']=drift_impacts[:i]
+            metric_data['Avec réaction']=adapt_perform[:i]
+            metric_data['Impact de drift']=drift_impacts[:i]
             metric_chart.line_chart(metric_data, color=["#338AFF", "#FF0D0D"])
 
             current_window=[]
