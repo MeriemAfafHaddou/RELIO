@@ -187,9 +187,9 @@ if button:
                 st.toast(f"Alerte : Un petit changement de distribution s'est produit  à partir de la donnée d'indice {i+1-window_size} à {alert_time}!", icon="❗")
                 st.warning(f"Alerte : Un petit changement de distribution s'est produit  à partir de la donnée d'indice {i+1-window_size} à {alert_time}!", icon="❗")
                 if model_type== "Supervisé - Stochastic Gradient Descent":
-                    model.partial_fit(train_X, train_y)
+                    model.partial_fit(win_X, win_y)
                 elif model_type == "Non supervisé - KMeans":
-                    model.partial_fit(train_X)                
+                    model.partial_fit(win_X)                
                 api.reset_ajust_model()
 
             distances_data=pd.DataFrame(api.get_distances()[:i], columns=['Distance'])
