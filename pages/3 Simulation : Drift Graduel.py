@@ -54,11 +54,11 @@ with st.popover(":gear: Modifier les paramètres"):
         cost_function = ot2d.CostFunction.SEUCLIDEAN
     elif cost_input == 'Mahalanobis':    
         cost_function = ot2d.CostFunction.MAHALANOBIS
-    alert_thold=st.number_input('Introduire le seuil d\'alerte', min_value=0.1, value=1.5, placeholder="Seuil d'alerte")
-    detect_thold=st.number_input('Introduire le seuil de détection', min_value=0.1, value=1.7, placeholder="Seuil de détection")
-    stblty_thold=st.number_input('Introduire le seuil de stabilité', min_value=1, value=4, placeholder="Seuil de stabilité")
+    alert_thold=st.number_input('Introduire le seuil d\'alerte', min_value=1, value=10, placeholder="Seuil d'alerte", step=1)
+    detect_thold=st.number_input('Introduire le seuil de détection', min_value=1, value=30, placeholder="Seuil de détection",step=1)
+    stblty_thold=st.number_input('Introduire le seuil de stabilité', min_value=1, value=4, placeholder="Seuil de stabilité",step=1)
 
-api=ot2d.OT2D(window_size, alert_thold, detect_thold, ot_metric, cost_function, stblty_thold )
+api=ot2d.OT2D(window_size, alert_thold, detect_thold, ot_metric, cost_function, stblty_thold, df)
 ref_dist=[]
 for i in range(window_size):
     ref_dist.append(df.iloc[i])

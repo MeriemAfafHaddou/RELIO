@@ -163,7 +163,8 @@ class OT2D:
     elif self.__ot_metric.value==1 :
       ot_dist=ot.emd2([],[],cost_matrix)
     else :
-      ot_dist=ot.sinkhorn([],[],cost_matrix, 0.1)
+      plan=ot.sinkhorn([],[],cost_matrix, 0.1)
+      ot_dist=np.sum(plan*cost_matrix)
 
     #Comparaison
     if ot_dist>self.__detect_thold :
