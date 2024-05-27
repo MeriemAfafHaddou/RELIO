@@ -118,6 +118,7 @@ elif option == "Synthétique : SEA":
     detect_thold=0.7
     win_size=100
 #Modify parameters
+
 with st.popover(":gear: Modifier les paramètres"):
     st.write("""
      :gear: Modifier les paramètres du test 
@@ -142,8 +143,17 @@ with st.popover(":gear: Modifier les paramètres"):
     detect_thold=st.number_input('Introduire le seuil de détection', min_value=0.1, value=detect_thold, placeholder="Seuil de détection")
     stblty_thold=st.number_input('Introduire le seuil de stabilité', min_value=1, value=3, placeholder="Seuil de stabilité")
 
+
 #API initialization
 api=ot2d.OT2D(window_size, alert_thold, detect_thold, ot_metric, cost_function, stblty_thold )
+
+get_dist=st.button(":gear: Calculer la distance moyenne", type="secondary")
+if get_dist:
+    estimated=api.estimate_thold(df)
+    st.write(f"""
+        La valeur de Wasserstein dans le cas normal = {estimated}
+        Vous pouvez prendre le seuil d'alerte = {estimated*1.5}, et le seuil de détection = {estimated*2}
+""")
 ref_dist=[]
 for i in range(window_size):
     ref_dist.append(df.iloc[i])

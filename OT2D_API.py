@@ -1,7 +1,7 @@
 from enum import Enum
 import ot
 import numpy as np
-
+import pandas as pd
 
 class DriftType(Enum):
   GRADUAL = 1
@@ -87,32 +87,16 @@ class OT2D:
   __concepts=[]
 
   #------------------------------------------------------------------------------------------ CONSTRUCTORS ------------------------------------------------------------------------------------------
-  def __init__(self,window_size, stability_threshold):
+  def __init__(self,window_size, alert_percent, detect_percent,ot_metric, cost_function,stability_threshold, df: pd.DataFrame):
     self.__win_size=window_size
     self.__stblty_thold=stability_threshold
     self.__ot_distances=[]
-
-  def __init__(self,window_size, alert_threshold, detect_threshold,stability_threshold):
-    self.__win_size=window_size
-    self.__alert_thold=alert_threshold
-    self.__detect_thold=detect_threshold
-    self.__stblty_thold=stability_threshold
-    self.__ot_distances=[]
-
-  def __init__(self,window_size, ot_metric, cost_function,stability_threshold):
-    self.__win_size=window_size
-    self.__ot_metric=ot_metric
     self.__cost_fun=cost_function
-    self.__stblty_thold=stability_threshold
-
-  def __init__(self,window_size, alert_threshold, detect_threshold, ot_metric, cost_function,stability_threshold):
-    self.__win_size=window_size
-    self.__alert_thold=alert_threshold
-    self.__detect_thold=detect_threshold
     self.__ot_metric=ot_metric
-    self.__cost_fun=cost_function
-    self.__stblty_thold=stability_threshold
-    self.__ot_distances=[]
+    estimated_mean=self.estimate_thold(df)
+    self.__alert_thold=estimated_mean*(1+alert_percent/100)
+    self.__detect_thold=estimated_mean*(1+detect_percent/100)
+
 
   #------------------------------------------------------------------------------------------ SETTERS ------------------------------------------------------------------------------------------
   def set_curr_win(self,current_window):
@@ -122,6 +106,9 @@ class OT2D:
   def set_curr_concept(self, current_concept):
     self.__curr_concept=current_concept
 
+  def set_tholds(self, alert_threshold, detect_threshold):
+    self.__alert_thold=alert_threshold
+    self.__detect_thold=detect_threshold
   #------------------------------------------------------------------------------------------ GETTERS ------------------------------------------------------------------------------------------
   def get_action(self):
     if self.__retrain_model==True : return 0
@@ -142,6 +129,11 @@ class OT2D:
 
   def get_alert(self):
     return self.__alert
+  
+  def get_alert_thold(self):
+    return self.__alert_thold
+  def get_detect_thold(self):
+    return self.__detect_thold
   #------------------------------------------------------------------------------------------   METHODS ------------------------------------------------------------------------------------------
   def reset_retrain_model(self):
     self.__retrain_model=False
@@ -251,6 +243,15 @@ class OT2D:
         else :
           self.__reappearing_count =0
 
+  #-------------------------------------------------------------------------------------------------------- 
+  def estimate_thold(self, dataset: pd.DataFrame):
+    """
+    a function to estimate the alert and detection thresholds, using the Optimal Transport metric and the cost function specified previously.
+    """
+    dist1=dataset.sample(n=self.__win_size, random_state=42)
+    dist2=dataset.sample(n=self.__win_size, random_state=2024)
+    distance=self.compareDistr(np.array(dist1), np.array(dist2))[1]
+    return round(distance, 2)
   #--------------------------------------------------------------------------------------------------------
   def identifyType(self):
     #INCREMENTAL DRIFT

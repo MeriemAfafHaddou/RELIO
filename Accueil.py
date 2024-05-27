@@ -25,21 +25,26 @@ Optimal Transport Drift Detection (OT2D) est une interface de programmation d'ap
 """)
 st.divider()
 st.write("""
+### ▶️ Documentation
+""")
+st.page_link("pages/1 Documentation.py", label="Documentation", icon="📑")
+st.divider()
+st.write("""
 ### ▶️ Simulation des différents types de drifts
 """)
-st.page_link("pages/1 Simulation : Drift Soudain.py", label=" Simulation : Drift Soudain", icon="🔻")
-st.page_link("pages/2 Simulation : Drift Graduel.py", label=" Simulation : Drift Graduel", icon="🔻")
-st.page_link("pages/3 Simulation : Drift Recurrent.py", label=" Simulation : Drift Recurrent", icon="🔻")
-st.page_link("pages/4 Simulation : Drift Incremental.py", label=" Simulation : Drift Incremental", icon="🔻")
+st.page_link("pages/2 Simulation : Drift Soudain.py", label=" Simulation : Drift Soudain", icon="🔻")
+st.page_link("pages/3 Simulation : Drift Graduel.py", label=" Simulation : Drift Graduel", icon="🔻")
+st.page_link("pages/4 Simulation : Drift Recurrent.py", label=" Simulation : Drift Recurrent", icon="🔻")
+st.page_link("pages/5 Simulation : Drift Incremental.py", label=" Simulation : Drift Incremental", icon="🔻")
 st.divider()
 st.write("""
 ### ▶️ Tests sur des datasets
 """)
-st.page_link("pages/5 Tests : Datasets Synthétiques.py", label=" Tests : Datasets Synthétiques", icon="🔻")
-st.page_link("pages/6 Tests : Datasets Réels.py", label=" Tests : Datasets Réels", icon="🔻")
+st.page_link("pages/6 Tests : Datasets Synthétiques.py", label=" Tests : Datasets Synthétiques", icon="🔻")
+st.page_link("pages/7 Tests : Datasets Réels.py", label=" Tests : Datasets Réels", icon="🔻")
 
 st.divider()
 st.write("""
 ### ▶️ Comparaison avec d'autres solutions
 """)
-st.page_link("pages/7 Comparaison.py", label=" Comparaison", icon="🔻")
+st.page_link("pages/8 Comparaison.py", label=" Comparaison", icon="🔻")
