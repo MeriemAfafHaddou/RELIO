@@ -11,6 +11,7 @@ from sklearn.metrics import accuracy_score
 from sklearn.decomposition import PCA
 from sklearn.cluster import MiniBatchKMeans
 from sklearn.metrics import silhouette_score
+from frouros.datasets.synthetic import SEA
 
 pca = PCA(n_components=1)
 st.write("""
@@ -30,15 +31,32 @@ st.write("""
 # Dataset choice
 option = st.selectbox(
     ":bar_chart: Quel dataset voulez vous choisir?",
-    ("Insects : Soudain", "Insects : Incrémental"))
+    ("Insects : Soudain", "Insects : Incrémental","SEA Généré"))
 if option == "Insects : Soudain":
     df=pd.read_csv("data/insects_sudden.csv", header=None)[9800:13800]
     alert_thold=5.4
     detect_thold=6.2
+    win_size=500
 elif option == "Insects : Incrémental":
     df=pd.read_csv("data/insects_incremental.csv", header=None)[32000:37000]
     alert_thold=4.7
     detect_thold=5.3
+    win_size=500
+elif option == "SEA Généré":
+    sea = SEA(seed=31)
+    it = sea.generate_dataset(block=1, noise=0.1, num_samples=1000)
+    # Convert the iterator to a list of tuples
+    data = list(it)
+    # Separate the arrays and the integers
+    arrays, ints = zip(*data)
+    # Convert arrays to a 2D array (assuming all arrays have the same length)
+    array_data = np.vstack(arrays)
+    # Create the DataFrame
+    df = pd.DataFrame(array_data)
+    df['class'] = ints
+    alert_thold=0.5
+    detect_thold=0.7
+    win_size=100
 all_classes=np.array(df)[:,-1]
 
 #Modify parameters
@@ -47,7 +65,7 @@ with st.popover(":gear: Modifier les paramètres"):
      :gear: Modifier les paramètres du test 
      """)
     model_type=st.selectbox('Choisir le type de modèle', ["Supervisé - Stochastic Gradient Descent", "Non supervisé - KMeans"])
-    window_size = st.number_input('Introduire la taille de la fenêtre', min_value=1, value=500, placeholder="Taille de la fenêtre")
+    window_size = st.number_input('Introduire la taille de la fenêtre', min_value=1, value=win_size, placeholder="Taille de la fenêtre")
     metric_input=st.selectbox('Choisir la métrique de détection', ['Wasserstein d\'ordre 1', 'Wasserstein d\'ordre 2', 'Wasserstein régularisé'], index=1)
     cost_input=st.selectbox('Choisir la fonction de coût', ['Euclidienne', 'Euclidienne Standarisée', 'Mahalanobis'], index=1)
     if metric_input == 'Wasserstein d\'ordre 1':
@@ -99,7 +117,7 @@ with col2:
     :small_red_triangle_down: Seuil de détection : ***{detect_thold}*** \n
     :small_red_triangle_down: Seuil de stabilité : ***{stblty_thold} fenêtres***
          """)
-pc1 = pca.fit_transform(df)
+pc1 = pca.fit_transform(df.iloc[:,:-1])
 button=st.button(":arrow_forward: Lancer le test ", type="primary")
 if model_type== "Supervisé - Stochastic Gradient Descent":
     param_grid = {

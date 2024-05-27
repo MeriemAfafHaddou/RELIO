@@ -10,6 +10,7 @@ from sklearn.preprocessing import LabelEncoder
 from frouros.detectors.data_drift import EMD
 from frouros.detectors.data_drift import JS
 from frouros.callbacks.batch import PermutationTestDistanceBased
+from frouros.datasets.synthetic import SEA
 
 st.set_page_config(layout="wide")
 st.write("""
@@ -28,7 +29,7 @@ pca = PCA(n_components=1)
 # Dataset choice
 option = st.selectbox(
     ":bar_chart: Quel dataset voulez vous choisir?",
-    ("Simulation : Drift Soudain","Simulation : Drift Graduel","Simulation : Drift Récurrent","Simulation : Drift Incrémental","Insects : Soudain","Insects : Incrémental","Asfault", "Electricity","Outdoor Objects", "Ozone"))
+    ("Simulation : Drift Soudain","Simulation : Drift Graduel","Simulation : Drift Récurrent","Simulation : Drift Incrémental","Synthétique : Insects Soudain","Synthétique : Insects Incrémental","Synthétique : SEA","Asfault", "Electricity","Outdoor Objects", "Ozone"))
 
 if option == "Asfault":
     df=pd.read_csv("data/Asfault.csv", header=None)[:5000]
@@ -88,16 +89,34 @@ elif option == "Simulation : Drift Incrémental":
     alert_thold=1.65
     detect_thold=2.0
     win_size=40
-elif option == "Insects : Soudain":
+elif option == "Synthétique : Insects Soudain":
     df=pd.read_csv('data/insects_sudden.csv', header=None)[9800:13800]
     alert_thold=5.4
     detect_thold=6.2
     win_size=500
-elif option == "Insects : Incrémental":
+elif option == "Synthétique : Insects Incrémental":
     df=pd.read_csv('data/insects_incremental.csv', header=None)[32000:37000]
     alert_thold=4.7
     detect_thold=5.3
     win_size=500
+elif option == "Synthétique : SEA":
+    sea = SEA(seed=31)
+    it = sea.generate_dataset(block=1, noise=0.1, num_samples=1000)
+    # Convert the iterator to a list of tuples
+    data = list(it)
+
+    # Separate the arrays and the integers
+    arrays, ints = zip(*data)
+
+    # Convert arrays to a 2D array (assuming all arrays have the same length)
+    array_data = np.vstack(arrays)
+
+    # Create the DataFrame
+    df = pd.DataFrame(array_data)
+    df['class'] = ints
+    alert_thold=0.5
+    detect_thold=0.7
+    win_size=100
 #Modify parameters
 with st.popover(":gear: Modifier les paramètres"):
     st.write("""

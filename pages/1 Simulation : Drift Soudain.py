@@ -82,7 +82,7 @@ with col2:
     :small_red_triangle_down: Seuil de détection : ***{detect_thold}*** \n
     :small_red_triangle_down: Seuil de stabilité : ***{stblty_thold} fenêtres***
          """)
-pc1 = pca.fit_transform(df)
+pc1 = pca.fit_transform(df.iloc[:,:-1])
 button=st.button(":arrow_forward: Lancer la simulation", type="primary")
 if model_type== "Supervisé - Stochastic Gradient Descent":
     param_grid = {
