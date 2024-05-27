@@ -7,9 +7,11 @@ import datetime
 import numpy as np
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import LabelEncoder
-from river import drift
 from frouros.detectors.data_drift import EMD
+from frouros.detectors.data_drift import JS
+from frouros.callbacks.batch import PermutationTestDistanceBased
 
+st.set_page_config(layout="wide")
 st.write("""
 # Comparaison entre OT2D et les méthodes classiques
 """)
@@ -102,8 +104,8 @@ with st.popover(":gear: Modifier les paramètres"):
      :gear: Modifier les paramètres du test 
      """)
     window_size = st.number_input('Introduire la taille de la fenêtre', min_value=1, value=win_size, placeholder="Taille de la fenêtre")
-    metric_input=st.selectbox('Choisir la métrique de détection', ['Wasserstein d\'ordre 1', 'Wasserstein d\'ordre 2', 'Wasserstein régularisé'], index=1)
-    cost_input=st.selectbox('Choisir la fonction de coût', ['Euclidienne', 'Euclidienne Standarisée', 'Mahalanobis'], index=1)
+    metric_input=st.selectbox('Choisir la métrique de détection', ['Wasserstein d\'ordre 1', 'Wasserstein d\'ordre 2', 'Wasserstein régularisé'], index=0)
+    cost_input=st.selectbox('Choisir la fonction de coût', ['Euclidienne', 'Euclidienne Standarisée', 'Mahalanobis'], index=0)
     if metric_input == 'Wasserstein d\'ordre 1':
         ot_metric = ot2d.OTMetric.WASSERSTEIN1
     elif metric_input == 'Wasserstein d\'ordre 2':
@@ -148,12 +150,25 @@ with col2:
     :small_red_triangle_down: Seuil de détection : ***{detect_thold}*** \n
     :small_red_triangle_down: Seuil de stabilité : ***{stblty_thold} fenêtres***
          """)
-pc1 = pca.fit_transform(df)
-fr_win=[]
-fr_detector = EMD()
+pc1 = pca.fit_transform(df.iloc[:,:-1])
+fr_win=np.array([])
+emd_detector = EMD()
+js_detector=JS(
+    callbacks=[
+        PermutationTestDistanceBased(
+            num_permutations=1000,
+            random_state=31,
+            num_jobs=-1,
+            method="exact",
+            name="permutation_test",
+            verbose=True,
+        ),
+    ],
+)
+alpha = 0.01
 fr_ref=pc1[:win_size]
-_ = fr_detector.fit(X=fr_ref)
-drift_detector = drift.ADWIN(delta=0.01)
+_ = emd_detector.fit(X=fr_ref)
+_ = js_detector.fit(X=fr_ref)
 button=st.button(":arrow_forward: Lancer le test ", type="primary")
 if button:
     st.toast("Initialisation de l'API en cours...", icon="⏳")
@@ -167,43 +182,26 @@ if button:
     """)
     st.divider()
     st.write("""
-            ### :clock1: Historique des drifts détectés: 
+            ### :scales: Comparaison des résultats de détection: 
     """)
-    ot2d_col, adwin_col, fr_col = st.columns(3)
+    ot2d_col, fr_col1, fr_col2 = st.columns(3)
     with ot2d_col:
-        st.write("""##### Résultats de OT2D : """)
-    with adwin_col:
-        st.write("""##### Résultats de ADWIN : """)
-    with fr_col:
-        st.write("""##### Résultats de Frouros : """)
+        st.write("""##### OT2D """)
+    with fr_col1:
+        st.write("""##### Frouros - EMD """)
+    with fr_col2:
+        st.write("""##### Frouros - Jensen Shannon """)
 
     for i in range(window_size, len(df)+1):
         # Plot the data from the start to the current point
         chart.line_chart(pc1[:i])
-        current_window.append(df.iloc[i-1])
-        drift_detector.update(pc1[i-1])
-        if drift_detector.drift_detected:
-            with adwin_col:
-                st.error(f"ADWIN : Un drift est détecté à partir de la donnée d'indice {i-window_size} à {datetime.datetime.now().strftime('%H:%M:%S')}", icon="⚠️")
-        
-        fr_win.append([pc1[i-1]])
+        current_window.append(df.iloc[i-1])   
         if len(current_window) == window_size:
             api.set_curr_win(np.array(current_window))
             api.monitorDrift()
-            
+            fr_win=pc1[i-window_size:i]
             win_X=np.array(current_window)[:, :-1]
-            win_y=np.array(current_window)[:, -1].astype(int)
-            fr_dist=fr_detector.compare(X=np.array(fr_win))[0]
-            if(fr_dist[0]>detect_thold):
-                with fr_col:
-                    drift_time = datetime.datetime.now().strftime("%H:%M:%S")
-                    st.error(f" Frouros : Un drift est détecté à partir de la donnée d'indice  {i+1-window_size} à {drift_time}", icon="⚠️")
-                    _ = fr_detector.fit(X=np.array(fr_win))
-
-            elif(fr_dist[0]>alert_thold):
-                with fr_col:
-                    alert_time = datetime.datetime.now().strftime("%H:%M:%S")
-                    st.warning(f"Frouros : Un petit changement de distribution s'est produit  à partir de la donnée d'indice {i+1-window_size} à {alert_time}!", icon="❗")
+            win_y=np.array(current_window)[:, -1].astype(int)            
             if(api.get_action()==0):
                 drift_time = datetime.datetime.now().strftime("%H:%M:%S")
                 st.toast(f":red[Un drift est détecté à partir de la donnée d'indice  {i+1-window_size} à {drift_time}]", icon="⚠️")
@@ -240,8 +238,29 @@ if button:
                 train_y=np.concatenate((ref_dist_y, win_y))               
                 api.reset_ajust_model()            
             
+            emd_dist=emd_detector.compare(X=fr_win)[0]
+            if(emd_dist[0]>detect_thold):
+                with fr_col1:
+                    drift_time = datetime.datetime.now().strftime("%H:%M:%S")
+                    st.error(f" Frouros : Un drift est détecté à partir de la donnée d'indice  {i+1-window_size} à {drift_time}", icon="⚠️")
+                    _ = emd_detector.fit(X=fr_win)
+
+            elif(emd_dist[0]>alert_thold):
+                with fr_col1:
+                    alert_time = datetime.datetime.now().strftime("%H:%M:%S")
+                    st.warning(f"Frouros : Un petit changement de distribution s'est produit  à partir de la donnée d'indice {i+1-window_size} à {alert_time}!", icon="❗")
+            
+            js_dist,callbacks_log=js_detector.compare(X=fr_win)
+            p_value = callbacks_log["permutation_test"]["p_value"]
+            if(p_value <= alpha):
+                with fr_col2:
+                    drift_time = datetime.datetime.now().strftime("%H:%M:%S")
+                    st.error(f" Frouros : Un drift est détecté à partir de la donnée d'indice  {i+1-window_size} à {drift_time}", icon="⚠️")
+                    _ = js_detector.fit(X=fr_win)
+
             current_window=[]
-            fr_win=[]
+            fr_win=np.array([])
+
 
         drift_type=api.identifyType()
         with ot2d_col:
