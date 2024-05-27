@@ -32,31 +32,34 @@ st.write("""
          ### Simulation : 
 """)
 df = pd.read_csv("data/iris_graduel.csv")
+col1, col2 = st.columns(2)
+btn1, btn2 = st.columns(2)
 
-with st.popover(":gear: Modifier les paramètres"):
-    st.write("""
-     :gear: Modifier les paramètres de la simulation 
-     """)
-    model_type=st.selectbox('Choisir le type de modèle', ["Supervisé - Stochastic Gradient Descent", "Non supervisé - KMeans"])
-    window_size = st.number_input('Introduire la taille de la fenêtre', min_value=1, value=20, placeholder="Taille de la fenêtre")
-    metric_input=st.selectbox('Choisir la métrique de détection', ['Wasserstein d\'ordre 1', 'Wasserstein d\'ordre 2', 'Wasserstein régularisé'], index=1)
-    cost_input=st.selectbox('Choisir la fonction de coût', ['Euclidienne', 'Euclidienne Standarisée', 'Mahalanobis'], index=1)
-    if metric_input == 'Wasserstein d\'ordre 1':
-        ot_metric = ot2d.OTMetric.WASSERSTEIN1
-    elif metric_input == 'Wasserstein d\'ordre 2':
-        ot_metric = ot2d.OTMetric.WASSERSTEIN2
-    elif metric_input == 'Wasserstein régularisé':
-        ot_metric = ot2d.OTMetric.SINKHORN
+with btn1:
+    with st.popover(":gear: Modifier les paramètres"):
+        st.write("""
+        :gear: Modifier les paramètres de la simulation 
+        """)
+        model_type=st.selectbox('Choisir le type de modèle', ["Supervisé - Stochastic Gradient Descent", "Non supervisé - KMeans"])
+        window_size = st.number_input('Introduire la taille de la fenêtre', min_value=1, value=20, placeholder="Taille de la fenêtre")
+        metric_input=st.selectbox('Choisir la métrique de détection', ['Wasserstein d\'ordre 1', 'Wasserstein d\'ordre 2', 'Wasserstein régularisé'], index=1)
+        cost_input=st.selectbox('Choisir la fonction de coût', ['Euclidienne', 'Euclidienne Standarisée', 'Mahalanobis'], index=1)
+        if metric_input == 'Wasserstein d\'ordre 1':
+            ot_metric = ot2d.OTMetric.WASSERSTEIN1
+        elif metric_input == 'Wasserstein d\'ordre 2':
+            ot_metric = ot2d.OTMetric.WASSERSTEIN2
+        elif metric_input == 'Wasserstein régularisé':
+            ot_metric = ot2d.OTMetric.SINKHORN
 
-    if cost_input == 'Euclidienne':
-        cost_function = ot2d.CostFunction.EUCLIDEAN
-    elif cost_input == 'Euclidienne Standarisée':
-        cost_function = ot2d.CostFunction.SEUCLIDEAN
-    elif cost_input == 'Mahalanobis':    
-        cost_function = ot2d.CostFunction.MAHALANOBIS
-    alert_thold=st.number_input('Introduire le seuil d\'alerte', min_value=1, value=10, placeholder="Seuil d'alerte", step=1)
-    detect_thold=st.number_input('Introduire le seuil de détection', min_value=1, value=30, placeholder="Seuil de détection",step=1)
-    stblty_thold=st.number_input('Introduire le seuil de stabilité', min_value=1, value=4, placeholder="Seuil de stabilité",step=1)
+        if cost_input == 'Euclidienne':
+            cost_function = ot2d.CostFunction.EUCLIDEAN
+        elif cost_input == 'Euclidienne Standarisée':
+            cost_function = ot2d.CostFunction.SEUCLIDEAN
+        elif cost_input == 'Mahalanobis':    
+            cost_function = ot2d.CostFunction.MAHALANOBIS
+        alert_thold=st.number_input('Introduire le pourcentage d\'alerte', min_value=1, value=10, placeholder="Pourcentage d'alerte", step=1)
+        detect_thold=st.number_input('Introduire le pourcentage de détection', min_value=1, value=30, placeholder="Pourcentage de détection",step=1)
+        stblty_thold=st.number_input('Introduire le seuil de stabilité', min_value=1, value=3, placeholder="Seuil de stabilité",step=1)
 
 api=ot2d.OT2D(window_size, alert_thold, detect_thold, ot_metric, cost_function, stblty_thold, df)
 ref_dist=[]
@@ -72,24 +75,23 @@ current_model=0
 ref_dist_X = np.array(ref_dist)[:, :-1]
 ref_dist_y = np.array(ref_dist)[:, -1].astype(int)
 all_classes=np.unique(np.array(df)[:,-1].astype(int))
-st.write(f"""
-    :small_red_triangle_down: Type de modèle : ***{model_type}***
-""")
-col1, col2 = st.columns(2)
+
 with col1:
     st.write(f"""
     :small_red_triangle_down: Taille de la fenêtre : ***{window_size} Données*** \n
     :small_red_triangle_down: Métrique de détection : ***{metric_input}*** \n
-    :small_red_triangle_down: Fonction de coût : ***{cost_input}***
+    :small_red_triangle_down: Fonction de coût : ***{cost_input}*** \n
+    :small_red_triangle_down: Type de modèle : ***{model_type}***
          """)
 with col2:
     st.write(f"""
-    :small_red_triangle_down: Seuil d'alerte : ***{alert_thold}*** \n
-    :small_red_triangle_down: Seuil de détection : ***{detect_thold}*** \n
+    :small_red_triangle_down: Pourcentage d'alerte : ***{alert_thold}%*** \n
+    :small_red_triangle_down: Pourcentage de détection : ***{detect_thold}%*** \n
     :small_red_triangle_down: Seuil de stabilité : ***{stblty_thold} fenêtres***
          """)
 pc1 = pca.fit_transform(df.iloc[:,:-1])
-button=st.button(":arrow_forward: Lancer la simulation", type="primary")
+with btn2:
+    button=st.button(":arrow_forward: Lancer la simulation", type="primary")
 if model_type== "Supervisé - Stochastic Gradient Descent":
     param_grid = {
         'alpha': [0.0001, 0.001, 0.01, 0.1],
@@ -208,15 +210,15 @@ if button:
                 st.toast(f"Alerte : Un petit changement de distribution s'est produit  à partir de la donnée d'indice {i+1-window_size} à {alert_time}!", icon="❗")
                 st.warning(f"Alerte : Un petit changement de distribution s'est produit  à partir de la donnée d'indice {i+1-window_size} à {alert_time}!", icon="❗")
                 if model_type== "Supervisé - Stochastic Gradient Descent":
-                    model.partial_fit(train_X, train_y)
+                    model.partial_fit(win_X, win_y)
  
 
                 elif model_type == "Non supervisé - KMeans":
                     model.partial_fit(train_X)                
                 api.reset_ajust_model()
             distances_data=pd.DataFrame(api.get_distances()[:i], columns=['Distance'])
-            distances_data['Alerte']=alert_thold
-            distances_data['Détection']=detect_thold
+            distances_data['Alerte']=api.get_alert_thold()
+            distances_data['Détection']=api.get_detect_thold()
             distances.line_chart(distances_data, color=["#FFAC1C","#338AFF", "#FF0D0D"])
             
             if model_type == "Non supervisé - KMeans":
