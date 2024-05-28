@@ -257,9 +257,14 @@ class OT2D:
   def identifyType(self):
     #INCREMENTAL DRIFT
     if self.__alert and self.__retrain_model:
-      self.__alert=False
-      self.__concept_drifts[-1].set_drift_type(DriftType.INCREMENTAL)
-      return DriftType.INCREMENTAL
+      if len(self.__ot_distances)>2 and self.__ot_distances[-3]<self.__ot_distances[-2]:
+        self.__alert=False
+        self.__concept_drifts[-1].set_drift_type(DriftType.INCREMENTAL)
+        return DriftType.INCREMENTAL
+      elif self.__ot_distances[-1]>self.__ot_distances[-2]:
+        self.__alert=False
+        self.__concept_drifts[-1].set_drift_type(DriftType.INCREMENTAL)
+        return DriftType.INCREMENTAL
 
     #SUDDEN DRIFT
     elif not self.__alert and self.__retrain_model:

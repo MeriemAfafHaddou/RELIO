@@ -3,6 +3,7 @@ import pandas as pd
 import OT2D_API as ot2d
 import time
 import numpy as np
+st.set_page_config(layout="wide")
 
 st.write("""
 # OT2D : Optimal Transport Drift Detection

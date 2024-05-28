@@ -12,7 +12,6 @@ from frouros.detectors.data_drift import JS
 from frouros.callbacks.batch import PermutationTestDistanceBased
 from frouros.datasets.synthetic import SEA
 
-st.set_page_config(layout="wide")
 st.write("""
 # Comparaison entre OT2D et les méthodes classiques
 """)
@@ -101,7 +100,7 @@ elif option == "Synthétique : Insects Incrémental":
     win_size=500
 elif option == "Synthétique : SEA":
     sea = SEA(seed=31)
-    it = sea.generate_dataset(block=1, noise=0.1, num_samples=1000)
+    it = sea.generate_dataset(block=1, noise=0.6, num_samples=1000)
     # Convert the iterator to a list of tuples
     data = list(it)
 
@@ -118,42 +117,37 @@ elif option == "Synthétique : SEA":
     detect_thold=0.7
     win_size=100
 #Modify parameters
+col1, col2 = st.columns(2)
+btn1, btn2 = st.columns(2)
+with btn1:
+    with st.popover(":gear: Modifier les paramètres"):
+        st.write("""
+        :gear: Modifier les paramètres du test 
+        """)
+        window_size = st.number_input('Introduire la taille de la fenêtre', min_value=1, value=win_size, placeholder="Taille de la fenêtre")
+        metric_input=st.selectbox('Choisir la métrique de détection', ['Wasserstein d\'ordre 1', 'Wasserstein d\'ordre 2', 'Wasserstein régularisé'], index=0)
+        cost_input=st.selectbox('Choisir la fonction de coût', ['Euclidienne', 'Euclidienne Standarisée', 'Mahalanobis'], index=0)
+        if metric_input == 'Wasserstein d\'ordre 1':
+            ot_metric = ot2d.OTMetric.WASSERSTEIN1
+        elif metric_input == 'Wasserstein d\'ordre 2':
+            ot_metric = ot2d.OTMetric.WASSERSTEIN2
+        elif metric_input == 'Wasserstein régularisé':
+            ot_metric = ot2d.OTMetric.SINKHORN
 
-with st.popover(":gear: Modifier les paramètres"):
-    st.write("""
-     :gear: Modifier les paramètres du test 
-     """)
-    window_size = st.number_input('Introduire la taille de la fenêtre', min_value=1, value=win_size, placeholder="Taille de la fenêtre")
-    metric_input=st.selectbox('Choisir la métrique de détection', ['Wasserstein d\'ordre 1', 'Wasserstein d\'ordre 2', 'Wasserstein régularisé'], index=0)
-    cost_input=st.selectbox('Choisir la fonction de coût', ['Euclidienne', 'Euclidienne Standarisée', 'Mahalanobis'], index=0)
-    if metric_input == 'Wasserstein d\'ordre 1':
-        ot_metric = ot2d.OTMetric.WASSERSTEIN1
-    elif metric_input == 'Wasserstein d\'ordre 2':
-        ot_metric = ot2d.OTMetric.WASSERSTEIN2
-    elif metric_input == 'Wasserstein régularisé':
-        ot_metric = ot2d.OTMetric.SINKHORN
-
-    if cost_input == 'Euclidienne':
-        cost_function = ot2d.CostFunction.EUCLIDEAN
-    elif cost_input == 'Euclidienne Standarisée':
-        cost_function = ot2d.CostFunction.SEUCLIDEAN
-    elif cost_input == 'Mahalanobis':    
-        cost_function = ot2d.CostFunction.MAHALANOBIS
-    alert_thold=st.number_input('Introduire le seuil d\'alerte', min_value=0.1, value=alert_thold, placeholder="Seuil d'alerte")
-    detect_thold=st.number_input('Introduire le seuil de détection', min_value=0.1, value=detect_thold, placeholder="Seuil de détection")
-    stblty_thold=st.number_input('Introduire le seuil de stabilité', min_value=1, value=3, placeholder="Seuil de stabilité")
+        if cost_input == 'Euclidienne':
+            cost_function = ot2d.CostFunction.EUCLIDEAN
+        elif cost_input == 'Euclidienne Standarisée':
+            cost_function = ot2d.CostFunction.SEUCLIDEAN
+        elif cost_input == 'Mahalanobis':    
+            cost_function = ot2d.CostFunction.MAHALANOBIS
+        alert_thold=st.number_input('Introduire le Pourcentage d\'alerte', min_value=1, value=10, placeholder="Pourcentage d'alerte")
+        detect_thold=st.number_input('Introduire le Pourcentage de détection', min_value=1, value=30, placeholder="Pourcentage de détection")
+        stblty_thold=st.number_input('Introduire le seuil de stabilité', min_value=1, value=3, placeholder="Seuil de stabilité")
 
 
 #API initialization
-api=ot2d.OT2D(window_size, alert_thold, detect_thold, ot_metric, cost_function, stblty_thold )
+api=ot2d.OT2D(window_size, alert_thold, detect_thold, ot_metric, cost_function, stblty_thold, df )
 
-get_dist=st.button(":gear: Calculer la distance moyenne", type="secondary")
-if get_dist:
-    estimated=api.estimate_thold(df)
-    st.write(f"""
-        La valeur de Wasserstein dans le cas normal = {estimated}
-        Vous pouvez prendre le seuil d'alerte = {estimated*1.5}, et le seuil de détection = {estimated*2}
-""")
 ref_dist=[]
 for i in range(window_size):
     ref_dist.append(df.iloc[i])
@@ -166,7 +160,6 @@ ref_dist_X = np.array(ref_dist)[:, :-1]
 ref_dist_y = np.array(ref_dist)[:, -1].astype(int)
 all_classes=np.unique(np.array(df)[:,-1].astype(int))
 
-col1, col2 = st.columns(2)
 with col1:
     st.write(f"""
     :small_red_triangle_down: Taille de la fenêtre : ***{window_size} Données*** \n
@@ -175,8 +168,8 @@ with col1:
          """)
 with col2:
     st.write(f"""
-    :small_red_triangle_down: Seuil d'alerte : ***{alert_thold}*** \n
-    :small_red_triangle_down: Seuil de détection : ***{detect_thold}*** \n
+    :small_red_triangle_down: Pourcentage d'alerte : ***{alert_thold}%*** \n
+    :small_red_triangle_down: Pourcentage de détection : ***{detect_thold}%*** \n
     :small_red_triangle_down: Seuil de stabilité : ***{stblty_thold} fenêtres***
          """)
 pc1 = pca.fit_transform(df.iloc[:,:-1])
@@ -198,7 +191,9 @@ alpha = 0.01
 fr_ref=pc1[:win_size]
 _ = emd_detector.fit(X=fr_ref)
 _ = js_detector.fit(X=fr_ref)
-button=st.button(":arrow_forward: Lancer le test ", type="primary")
+
+with btn2:
+    button=st.button(":arrow_forward: Lancer le test ", type="primary")
 if button:
     st.toast("Initialisation de l'API en cours...", icon="⏳")
 
@@ -268,13 +263,13 @@ if button:
                 api.reset_ajust_model()            
             
             emd_dist=emd_detector.compare(X=fr_win)[0]
-            if(emd_dist[0]>detect_thold):
+            if(emd_dist[0]>api.get_detect_thold()):
                 with fr_col1:
                     drift_time = datetime.datetime.now().strftime("%H:%M:%S")
                     st.error(f" Frouros : Un drift est détecté à partir de la donnée d'indice  {i+1-window_size} à {drift_time}", icon="⚠️")
                     _ = emd_detector.fit(X=fr_win)
 
-            elif(emd_dist[0]>alert_thold):
+            elif(emd_dist[0]>api.get_alert_thold()):
                 with fr_col1:
                     alert_time = datetime.datetime.now().strftime("%H:%M:%S")
                     st.warning(f"Frouros : Un petit changement de distribution s'est produit  à partir de la donnée d'indice {i+1-window_size} à {alert_time}!", icon="❗")

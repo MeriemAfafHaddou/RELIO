@@ -55,8 +55,8 @@ with btn1:
         elif cost_input == 'Mahalanobis':    
             cost_function = ot2d.CostFunction.MAHALANOBIS
         alert_thold=st.number_input('Introduire le Pourcentage d\'alerte', min_value=1, value=10, placeholder="Pourcentage d'alerte",step=1)
-        detect_thold=st.number_input('Introduire le Pourcentage de détection', min_value=1, value=40, placeholder="Pourcentage de détection",step=1)
-        stblty_thold=st.number_input('Introduire le seuil de stabilité', min_value=1, value=6, placeholder="Seuil de stabilité")
+        detect_thold=st.number_input('Introduire le Pourcentage de détection', min_value=1, value=30, placeholder="Pourcentage de détection",step=1)
+        stblty_thold=st.number_input('Introduire le seuil de stabilité', min_value=1, value=4, placeholder="Seuil de stabilité")
 
 api=ot2d.OT2D(window_size, alert_thold, detect_thold, ot_metric, cost_function, stblty_thold, df)
 ref_dist=[]

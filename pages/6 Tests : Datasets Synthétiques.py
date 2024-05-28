@@ -40,7 +40,7 @@ elif option == "Insects : Incrémental":
     win_size=500
 elif option == "SEA Généré":
     sea = SEA(seed=31)
-    it = sea.generate_dataset(block=1, noise=0.1, num_samples=1000)
+    it = sea.generate_dataset(block=3, noise=0.4, num_samples=2000)
     # Convert the iterator to a list of tuples
     data = list(it)
     # Separate the arrays and the integers
@@ -50,7 +50,7 @@ elif option == "SEA Généré":
     # Create the DataFrame
     df = pd.DataFrame(array_data)
     df['class'] = ints
-    win_size=100
+    win_size=250
 all_classes=np.array(df)[:,-1]
 col1, col2 = st.columns(2)
 btn1, btn2 = st.columns(2)
