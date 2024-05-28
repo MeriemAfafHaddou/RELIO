@@ -15,14 +15,7 @@ from frouros.datasets.synthetic import SEA
 st.write("""
 # Comparaison entre OT2D et les méthodes classiques
 """)
-with st.expander(":blue[:question: Quelles sont les méthodes classiques de détection du concept drift ?]",expanded=False):
-    st.write('''
-    ### 1. ADWIN : une méthode de détection de dérive de concept adaptative qui ajuste automatiquement la taille de la fenêtre de données en fonction de la distribution des données.
-    ### 2. Page-Hinkley : une méthode de détection de dérive de concept basée sur la somme cumulée des différences entre les valeurs observées et les valeurs attendues.
-    ''')
-st.write("""
-         ### Comparaison : 
-""")
+st.markdown("####")
 pca = PCA(n_components=1)
 
 # Dataset choice
@@ -118,6 +111,7 @@ elif option == "Synthétique : SEA":
     win_size=100
 #Modify parameters
 col1, col2 = st.columns(2)
+st.markdown("")
 btn1, btn2 = st.columns(2)
 with btn1:
     with st.popover(":gear: Modifier les paramètres"):
@@ -161,20 +155,39 @@ ref_dist_y = np.array(ref_dist)[:, -1].astype(int)
 all_classes=np.unique(np.array(df)[:,-1].astype(int))
 
 with col1:
-    st.write(f"""
-    :small_red_triangle_down: Taille de la fenêtre : ***{window_size} Données*** \n
-    :small_red_triangle_down: Métrique de détection : ***{metric_input}*** \n
-    :small_red_triangle_down: Fonction de coût : ***{cost_input}***
-         """)
+    st.markdown(f"""
+        :small_red_triangle_down: Taille de la fenêtre : ***{window_size} Données***
+    """, help="c'est le :blue-background[nombre de données] à considérer pour le calcul de la métrique de drift.")
+    st.markdown(f"""
+        :small_red_triangle_down: Métrique de détection : ***{metric_input}***
+    """, help="c'est la métrique basée sur le transport optimal pour :blue-background[comparer les distributions] de données afin de détecter le drift.Le transport optimal possède une variété de métriques. Nous avons opté pour celles les plus utilisées dans la littérature.")
+    st.markdown(f"""
+        :small_red_triangle_down: Fonction de coût : ***{cost_input}***
+    """, help=" c'est une :blue-background[distance calculée entre les paires de données] de deux distibutions, utilisée par les métriques du transport optimal.")
 with col2:
-    st.write(f"""
-    :small_red_triangle_down: Pourcentage d'alerte : ***{alert_thold}%*** \n
-    :small_red_triangle_down: Pourcentage de détection : ***{detect_thold}%*** \n
-    :small_red_triangle_down: Seuil de stabilité : ***{stblty_thold} fenêtres***
-         """)
+    st.markdown(f"""
+        :small_red_triangle_down: Pourcentage d'alerte : ***{alert_thold}%***
+                """, help="c'est le :blue-background[pourcentage de changement de distribution] à partir duquel une alerte est déclenchée. Autrement dit, si la metrique de comparaison augmente de 20% alors une alerte est déclenchée.")
+    st.markdown(f"""
+        :small_red_triangle_down: Pourcentage de détection : ***{detect_thold}%***
+                """, help="c'est le :blue-background[pourcentage de changement de distribution] à partir duquel le drift est détecté. Autrement dit, si la metrique de comparaison augmente de 50% alors le drift est détecté.")
+    st.markdown(f"""
+        :small_red_triangle_down: Seuil de stabilité : ***{stblty_thold} fenêtres***
+                """, help="C'est :blue-background[le nombre de fenetre] pour dire que les données sont :blue-background[stables sur une distribution], autrement dit : absence de drift.")    
 pc1 = pca.fit_transform(df.iloc[:,:-1])
 fr_win=np.array([])
-emd_detector = EMD()
+emd_detector = EMD(
+    callbacks=[
+        PermutationTestDistanceBased(
+            num_permutations=1000,
+            random_state=31,
+            num_jobs=-1,
+            method="exact",
+            name="permutation_test",
+            verbose=True,
+        ),
+    ],
+)
 js_detector=JS(
     callbacks=[
         PermutationTestDistanceBased(
@@ -210,11 +223,11 @@ if button:
     """)
     ot2d_col, fr_col1, fr_col2 = st.columns(3)
     with ot2d_col:
-        st.write("""##### OT2D """)
+        st.markdown("""##### OT2D """)
     with fr_col1:
-        st.write("""##### Frouros - EMD """)
+        st.markdown("""##### Frouros - EMD """, help="Earth Mover's Distance : ou bien Wasserstein d'ordre 1")
     with fr_col2:
-        st.write("""##### Frouros - Jensen Shannon """)
+        st.markdown("""##### Frouros - JS """, help="Jensen-Shannon Distance : une distance basée sur la divergence de Kullback-Leibler")
 
     for i in range(window_size, len(df)+1):
         # Plot the data from the start to the current point
@@ -262,17 +275,13 @@ if button:
                 train_y=np.concatenate((ref_dist_y, win_y))               
                 api.reset_ajust_model()            
             
-            emd_dist=emd_detector.compare(X=fr_win)[0]
-            if(emd_dist[0]>api.get_detect_thold()):
+            emd_dist,callbacks_log=emd_detector.compare(X=fr_win)
+            p_value = callbacks_log["permutation_test"]["p_value"]
+            if(p_value <= alpha):
                 with fr_col1:
                     drift_time = datetime.datetime.now().strftime("%H:%M:%S")
                     st.error(f" Frouros : Un drift est détecté à partir de la donnée d'indice  {i+1-window_size} à {drift_time}", icon="⚠️")
                     _ = emd_detector.fit(X=fr_win)
-
-            elif(emd_dist[0]>api.get_alert_thold()):
-                with fr_col1:
-                    alert_time = datetime.datetime.now().strftime("%H:%M:%S")
-                    st.warning(f"Frouros : Un petit changement de distribution s'est produit  à partir de la donnée d'indice {i+1-window_size} à {alert_time}!", icon="❗")
             
             js_dist,callbacks_log=js_detector.compare(X=fr_win)
             p_value = callbacks_log["permutation_test"]["p_value"]
