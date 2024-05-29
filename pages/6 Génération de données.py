@@ -9,58 +9,39 @@ from sklearn.linear_model import SGDClassifier
 from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import accuracy_score
 from sklearn.decomposition import PCA
-from sklearn.preprocessing import LabelEncoder
 from sklearn.cluster import MiniBatchKMeans
 from sklearn.metrics import silhouette_score
+from frouros.datasets.synthetic import SEA
 
+st.logo("images/logo.png")
+st.set_page_config(
+   page_title="Génération de données",
+   page_icon="images/icon.png",
+   layout="wide",
+   initial_sidebar_state="expanded",
+)
 pca = PCA(n_components=1)
 st.write("""
-# RELIO : Tests sur des Datasets Réels
+# RELIO : Tests sur des données générées par SEA de Frouros
 """)
-
-with st.expander(":blue[:question: Comment évaluer notre solution sur un dataset réel ?]",expanded=False):
-    st.write('''
-        Nous allons tester notre solution sur des datasets réels pour évaluer sa capacité à détecter les différents types de drifts, en surveillant les performances du modèle supervisé ou non supervisé.
-    ''')
 st.write("""
          ### Test : 
 """)
-# Dataset choice
-option = st.selectbox(
-    ":bar_chart: Quel dataset voulez vous choisir?",
-    ("Asfault", "Electricity","Outdoor Objects", "Ozone"))
 
-if option == "Asfault":
-    df=pd.read_csv("data/Asfault.csv", header=None)[:5000]
-    label_encoder = LabelEncoder()
-    df['class'] = label_encoder.fit_transform(df[64])
-    class_mapping = dict(zip(label_encoder.classes_, label_encoder.transform(label_encoder.classes_)))
-    df = df.drop(64,axis='columns')
-    df.columns= df.columns.astype(str)
-    win_size=250
-
-elif option == "Electricity":
-    df=pd.read_csv('data/electricity.csv')[:8000]
-    label_encoder = LabelEncoder()
-    df['Class'] = label_encoder.fit_transform(df['class'])
-    class_mapping = dict(zip(label_encoder.classes_, label_encoder.transform(label_encoder.classes_)))
-    df = df.drop('class',axis='columns')
-    df.columns= df.columns.astype(str)
-    win_size=500
-
-elif option == "Outdoor Objects":
-    df=pd.read_csv("data/outdoor.csv", header=None)
-    win_size=500
-  
-elif option == "Ozone":
-    df=pd.read_csv('data/Ozone.csv', header=None)
-    label_encoder = LabelEncoder()
-    df['class'] = label_encoder.fit_transform(df[72])
-    class_mapping = dict(zip(label_encoder.classes_, label_encoder.transform(label_encoder.classes_)))
-    df = df.drop(72,axis='columns')
-    df.columns= df.columns.astype(str)
-    win_size=200
-
+st.write("Nous avons généré un dataset de **2000 données**, avec un **taux d'échantillons avec une classe bruyante égal à 0.4**")
+sea = SEA(seed=31)
+it = sea.generate_dataset(block=3, noise=0.4, num_samples=2000)
+# Convert the iterator to a list of tuples
+data = list(it)
+# Separate the arrays and the integers
+arrays, ints = zip(*data)
+# Convert arrays to a 2D array (assuming all arrays have the same length)
+array_data = np.vstack(arrays)
+# Create the DataFrame
+df = pd.DataFrame(array_data)
+df['class'] = ints
+win_size=250
+all_classes=np.array(df)[:,-1]
 col1, col2 = st.columns(2)
 st.markdown("")
 btn1, btn2 = st.columns(2)
@@ -73,7 +54,7 @@ with btn1:
         model_type=st.selectbox('Choisir le type de modèle', ["Supervisé - Stochastic Gradient Descent", "Non supervisé - KMeans"])
         window_size = st.number_input('Introduire la taille de la fenêtre', min_value=1, value=win_size, placeholder="Taille de la fenêtre")
         metric_input=st.selectbox('Choisir la métrique de détection', ['Wasserstein d\'ordre 1', 'Wasserstein d\'ordre 2', 'Wasserstein régularisé'], index=1)
-        cost_input=st.selectbox('Choisir la fonction de coût', ['Euclidienne', 'Euclidienne Standarisée', 'Mahalanobis'], index=1)
+        cost_input=st.selectbox('Choisir la fonction de coût', ['Euclidienne', 'Euclidienne Standarisée', 'Mahalanobis'], index=2)
         if metric_input == 'Wasserstein d\'ordre 1':
             ot_metric = relio.OTMetric.WASSERSTEIN1
         elif metric_input == 'Wasserstein d\'ordre 2':
@@ -87,12 +68,12 @@ with btn1:
             cost_function = relio.CostFunction.SEUCLIDEAN
         elif cost_input == 'Mahalanobis':    
             cost_function = relio.CostFunction.MAHALANOBIS
-        alert_thold=st.number_input('Introduire le Pourcentage d\'alerte', min_value=1, value=10, placeholder="Pourcentage d'alerte", step=1)
-        detect_thold=st.number_input('Introduire le Pourcentage de détection', min_value=1, value=30, placeholder="Pourcentage de détection",step=1)
+        alert_thold=st.number_input('Introduire le Pourcentage d\'alerte', min_value=1, value=5, placeholder="Pourcentage d'alerte")
+        detect_thold=st.number_input('Introduire le Pourcentage de détection', min_value=1, value=10, placeholder="Pourcentage de détection")
         stblty_thold=st.number_input('Introduire le seuil de stabilité', min_value=1, value=3, placeholder="Seuil de stabilité")
 
 #API initialization
-api=relio.RELIO_API(window_size, alert_thold, detect_thold, ot_metric, cost_function, stblty_thold, df )
+api=relio.RELIO_API(window_size, alert_thold, detect_thold, ot_metric, cost_function, stblty_thold,df )
 ref_dist=[]
 for i in range(window_size):
     ref_dist.append(df.iloc[i])
@@ -173,9 +154,8 @@ if button:
     """)
     chart = st.empty()
     st.write(f"""
-       🔻 Qualité de la présentation de l'axe 1 =  **{pca.explained_variance_ratio_[0]:.2f}**
+       🔻 Qualité de la présentation de l'axe 1 =  **{pca.explained_variance_ratio_[0] * 100:.2f}%**
     """)
-
     st.write(f"""
     ##### 	:chart_with_upwards_trend: Évolution de la distance de {metric_input} entre la distribution de référence et la fenêtre courante  : 
     """)
@@ -209,7 +189,6 @@ if button:
                 y_pred_drift=drifted_model.predict(win_X)
                 drifted_metric=accuracy_score(y_pred_drift, win_y)
  
-
             if(api.get_action()==0):
                 drift_time = datetime.datetime.now().strftime("%H:%M:%S")
                 st.toast(f":red[Un drift est détecté à partir de la donnée d'indice  {i+1-window_size} à {drift_time}]", icon="⚠️")
@@ -230,6 +209,7 @@ if button:
                         st.info(f'Le type de drift est : Incrémental', icon="📌")
                 api.reset_retrain_model()
 
+                print(f"UNIQUE : {np.unique(win_y)}")
                 train_X=np.concatenate((ref_dist_X, win_X))
                 train_y=np.concatenate((ref_dist_y, win_y))
                 if model_type== "Supervisé - Stochastic Gradient Descent":
@@ -256,8 +236,10 @@ if button:
                 if model_type== "Supervisé - Stochastic Gradient Descent":
                     model.partial_fit(win_X, win_y, classes=np.unique(win_y))
                 elif model_type == "Non supervisé - KMeans":
-                    model.partial_fit(win_X)                
+                    model.partial_fit(train_X)                
+
                 api.reset_ajust_model()
+
             distances_data=pd.DataFrame(api.get_distances()[:i], columns=['Distance'])
             distances_data['Alerte']=api.get_alert_thold()
             distances_data['Détection']=api.get_detect_thold()
@@ -275,6 +257,7 @@ if button:
             metric_data['Avec adaptation']=adapt_perform[:i]
             metric_data['Sans adaptation']=drift_impacts[:i]
             metric_chart.line_chart(metric_data, color=["#338AFF", "#FF0D0D"])
+
 
             current_window=[]
         drift_type=api.identifyType()

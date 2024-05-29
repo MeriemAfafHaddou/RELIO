@@ -1,11 +1,29 @@
 import streamlit as st
 
-st.write(""" # 📑 Documentation de RELIO API """)
+st.logo("images/logo.png")
+st.set_page_config(
+   page_title="Relio - Documentation",
+   page_icon="images/icon.png",
+   layout="wide",
+   initial_sidebar_state="expanded",
+)
+st.write(""" # 📑 RELIO - Documentation \n
+         """)
+st.markdown(""" """)
+relio_container = st.container(border=True)
+relio_container.write(""" 
+### :question: Qu'est-ce que ReliO ?
+ReliO (RELIable Outcomes) est un API caractérisé par :red-background[**ses résultats fiables**] pour la :red-background[**détection de concept drift**] basée sur le :red-background[**transport optimal**]. Il permet de détecter le concept drift causé par le changement de distribution dans les flux de données en temps réel.
+""")
+st.markdown(""" """)
+
 ot_container = st.container(border=True)
 ot_container.write("""
 ### :question: Qu'est-ce que le transport optimal?
 Le Transport Optimal est une méthode mathématique qui permet de trouver la meilleure correspondance entre deux distributions de probabilité. Il offre des métriques fiable pour comparer les distributions de données.
                   """)
+st.markdown(""" """)
+
 
 param_container = st.container(border=True)
 param_container.write("""
@@ -18,3 +36,4 @@ param_container.markdown("""
     :small_red_triangle_down: **Pourcentage de détection** : c'est le :red-background[pourcentage de changement de distribution] à partir duquel le drift est détecté. Autrement dit, si la metrique de comparaison augmente de 50% alors le drift est détecté. \n
     :small_red_triangle_down: **Seuil de stabilité** : C'est :red-background[le nombre de fenetre] pour dire que les données sont :red-background[stables sur une distribution], autrement dit : absence de drift \n
 """)
+param_container.markdown(""" """)

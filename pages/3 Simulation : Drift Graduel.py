@@ -12,6 +12,13 @@ from sklearn.cluster import MiniBatchKMeans
 from sklearn.metrics import silhouette_score
 from sklearn.decomposition import PCA
 
+st.logo("images/logo.png")
+st.set_page_config(
+   page_title="Simulation - Drift Graduel",
+   page_icon="images/icon.png",
+   layout="wide",
+   initial_sidebar_state="expanded",
+)
 pca = PCA(n_components=1)
 
 
@@ -141,7 +148,7 @@ if button:
     """)
     chart = st.empty()
     st.write(f"""
-       🔻 Qualité de la présentation de l'axe 1 =  **{pca.explained_variance_ratio_[0]:.2f}**
+       🔻 Qualité de la présentation de l'axe 1 =  **{pca.explained_variance_ratio_[0] * 100:.2f}%**
     """)
     st.write(f"""
     ##### 	:chart_with_upwards_trend: Évolution de la distance de {metric_input} entre la distribution de référence et la fenêtre courante  : 

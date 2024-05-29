@@ -3,16 +3,28 @@ import pandas as pd
 import RELIO_API as relio
 import time
 import numpy as np
-st.set_page_config(layout="wide")
 
+
+st.logo("images/logo.png")
+st.set_page_config(
+   page_title="Relio - Accueil",
+   page_icon="images/icon.png",
+   layout="wide",
+   initial_sidebar_state="expanded",
+)
 st.write("""
-# RELIO : Reliable Drift Detection API
+# 🏠 RELIO - Accueil
          """)
+st.markdown(""" """)
+
 cd_container = st.container(border=True)
 cd_container.write("""
 ### :question: Qu'est-ce que le concept drift?
 Le concept drift se produit lorsque :red-background[la distribution des données change avec le temps], ce qui rend le modèle d'apprentissage automatique supervisé ou non supervisé :red-background[obsolète].
+                   D'où la nécessité de mettre en place une solution de détection de drift fiable et robuste.
          """)
+st.markdown(""" """)
+
 
 cd_container = st.container(border=True)
 cd_container.write("""
@@ -34,13 +46,19 @@ st.page_link("pages/4 Simulation : Drift Recurrent.py", label=" Simulation : Dri
 st.page_link("pages/5 Simulation : Drift Incremental.py", label=" Simulation : Drift Incremental", icon="🔻")
 st.divider()
 st.write("""
+### ▶️ Génération de données
+""")
+st.page_link("pages/6 Génération de données.py", label=" Génération de données", icon="🔻")
+
+st.divider()
+st.write("""
 ### ▶️ Tests sur des datasets
 """)
-st.page_link("pages/6 Tests : Datasets Synthétiques.py", label=" Tests : Datasets Synthétiques", icon="🔻")
-st.page_link("pages/7 Tests : Datasets Réels.py", label=" Tests : Datasets Réels", icon="🔻")
+st.page_link("pages/7 Datasets Synthétiques.py", label=" Tests : Datasets Synthétiques", icon="🔻")
+st.page_link("pages/8 Datasets Réels.py", label=" Tests : Datasets Réels", icon="🔻")
 
 st.divider()
 st.write("""
 ### ▶️ Comparaison avec d'autres solutions
 """)
-st.page_link("pages/8 Comparaison.py", label=" Comparaison", icon="🔻")
+st.page_link("pages/9 Comparaison.py", label=" Comparaison", icon="🔻")

@@ -11,6 +11,14 @@ from frouros.detectors.data_drift import EMD
 from frouros.detectors.data_drift import JS
 from frouros.callbacks.batch import PermutationTestDistanceBased
 from frouros.datasets.synthetic import SEA
+
+st.logo("images/logo.png")
+st.set_page_config(
+   page_title="Comparaison",
+   page_icon="images/icon.png",
+   layout="wide",
+   initial_sidebar_state="expanded",
+)
 st.write("""
 # Comparaison entre RELIO et les méthodes classiques
 """)
@@ -214,7 +222,7 @@ if button:
     """)
     chart = st.empty()
     st.write(f"""
-       🔻 Qualité de la présentation de l'axe 1 =  **{pca.explained_variance_ratio_[0]:.2f}**
+       🔻 Qualité de la présentation de l'axe 1 =  **{pca.explained_variance_ratio_[0] * 100:.2f}%**
     """)
     st.divider()
     st.write("""
