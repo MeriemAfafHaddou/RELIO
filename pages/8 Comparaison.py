@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-import OT2D_API as ot2d
+import RELIO_API as relio
 import time
 import numpy as np
 import datetime
@@ -11,9 +11,8 @@ from frouros.detectors.data_drift import EMD
 from frouros.detectors.data_drift import JS
 from frouros.callbacks.batch import PermutationTestDistanceBased
 from frouros.datasets.synthetic import SEA
-
 st.write("""
-# Comparaison entre OT2D et les méthodes classiques
+# Comparaison entre RELIO et les méthodes classiques
 """)
 st.markdown("####")
 pca = PCA(n_components=1)
@@ -122,30 +121,30 @@ with btn1:
         metric_input=st.selectbox('Choisir la métrique de détection', ['Wasserstein d\'ordre 1', 'Wasserstein d\'ordre 2', 'Wasserstein régularisé'], index=0)
         cost_input=st.selectbox('Choisir la fonction de coût', ['Euclidienne', 'Euclidienne Standarisée', 'Mahalanobis'], index=0)
         if metric_input == 'Wasserstein d\'ordre 1':
-            ot_metric = ot2d.OTMetric.WASSERSTEIN1
+            ot_metric = relio.OTMetric.WASSERSTEIN1
         elif metric_input == 'Wasserstein d\'ordre 2':
-            ot_metric = ot2d.OTMetric.WASSERSTEIN2
+            ot_metric = relio.OTMetric.WASSERSTEIN2
         elif metric_input == 'Wasserstein régularisé':
-            ot_metric = ot2d.OTMetric.SINKHORN
+            ot_metric = relio.OTMetric.SINKHORN
 
         if cost_input == 'Euclidienne':
-            cost_function = ot2d.CostFunction.EUCLIDEAN
+            cost_function = relio.CostFunction.EUCLIDEAN
         elif cost_input == 'Euclidienne Standarisée':
-            cost_function = ot2d.CostFunction.SEUCLIDEAN
+            cost_function = relio.CostFunction.SEUCLIDEAN
         elif cost_input == 'Mahalanobis':    
-            cost_function = ot2d.CostFunction.MAHALANOBIS
-        alert_thold=st.number_input('Introduire le Pourcentage d\'alerte', min_value=1, value=10, placeholder="Pourcentage d'alerte")
-        detect_thold=st.number_input('Introduire le Pourcentage de détection', min_value=1, value=30, placeholder="Pourcentage de détection")
+            cost_function = relio.CostFunction.MAHALANOBIS
+        alert_thold=st.number_input('Introduire le Pourcentage d\'alerte', min_value=1, value=20, placeholder="Pourcentage d'alerte")
+        detect_thold=st.number_input('Introduire le Pourcentage de détection', min_value=1, value=50, placeholder="Pourcentage de détection")
         stblty_thold=st.number_input('Introduire le seuil de stabilité', min_value=1, value=3, placeholder="Seuil de stabilité")
 
 
 #API initialization
-api=ot2d.OT2D(window_size, alert_thold, detect_thold, ot_metric, cost_function, stblty_thold, df )
+api=relio.RELIO_API(window_size, alert_thold, detect_thold, ot_metric, cost_function, stblty_thold, df )
 
 ref_dist=[]
 for i in range(window_size):
     ref_dist.append(df.iloc[i])
-first_concept=ot2d.Concept(1, np.array(ref_dist))
+first_concept=relio.Concept(1, np.array(ref_dist))
 api.add_concept(first_concept)
 api.set_curr_concept(first_concept)
 current_window=[]
@@ -157,23 +156,23 @@ all_classes=np.unique(np.array(df)[:,-1].astype(int))
 with col1:
     st.markdown(f"""
         :small_red_triangle_down: Taille de la fenêtre : ***{window_size} Données***
-    """, help="c'est le :blue-background[nombre de données] à considérer pour le calcul de la métrique de drift.")
+    """, help="c'est le :red-background[nombre de données] à considérer pour le calcul de la métrique de drift.")
     st.markdown(f"""
         :small_red_triangle_down: Métrique de détection : ***{metric_input}***
-    """, help="c'est la métrique basée sur le transport optimal pour :blue-background[comparer les distributions] de données afin de détecter le drift.Le transport optimal possède une variété de métriques. Nous avons opté pour celles les plus utilisées dans la littérature.")
+    """, help="c'est la métrique basée sur le transport optimal pour :red-background[comparer les distributions] de données afin de détecter le drift.Le transport optimal possède une variété de métriques. Nous avons opté pour celles les plus utilisées dans la littérature.")
     st.markdown(f"""
         :small_red_triangle_down: Fonction de coût : ***{cost_input}***
-    """, help=" c'est une :blue-background[distance calculée entre les paires de données] de deux distibutions, utilisée par les métriques du transport optimal.")
+    """, help=" c'est une :red-background[distance calculée entre les paires de données] de deux distibutions, utilisée par les métriques du transport optimal.")
 with col2:
     st.markdown(f"""
         :small_red_triangle_down: Pourcentage d'alerte : ***{alert_thold}%***
-                """, help="c'est le :blue-background[pourcentage de changement de distribution] à partir duquel une alerte est déclenchée. Autrement dit, si la metrique de comparaison augmente de 20% alors une alerte est déclenchée.")
+                """, help="c'est le :red-background[pourcentage de changement de distribution] à partir duquel une alerte est déclenchée. Autrement dit, si la metrique de comparaison augmente de 20% alors une alerte est déclenchée.")
     st.markdown(f"""
         :small_red_triangle_down: Pourcentage de détection : ***{detect_thold}%***
-                """, help="c'est le :blue-background[pourcentage de changement de distribution] à partir duquel le drift est détecté. Autrement dit, si la metrique de comparaison augmente de 50% alors le drift est détecté.")
+                """, help="c'est le :red-background[pourcentage de changement de distribution] à partir duquel le drift est détecté. Autrement dit, si la metrique de comparaison augmente de 50% alors le drift est détecté.")
     st.markdown(f"""
         :small_red_triangle_down: Seuil de stabilité : ***{stblty_thold} fenêtres***
-                """, help="C'est :blue-background[le nombre de fenetre] pour dire que les données sont :blue-background[stables sur une distribution], autrement dit : absence de drift.")    
+                """, help="C'est :red-background[le nombre de fenetre] pour dire que les données sont :red-background[stables sur une distribution], autrement dit : absence de drift.")    
 pc1 = pca.fit_transform(df.iloc[:,:-1])
 fr_win=np.array([])
 emd_detector = EMD(
@@ -221,9 +220,9 @@ if button:
     st.write("""
             ### :scales: Comparaison des résultats de détection: 
     """)
-    ot2d_col, fr_col1, fr_col2 = st.columns(3)
-    with ot2d_col:
-        st.markdown("""##### OT2D """)
+    relio_col, fr_col1, fr_col2 = st.columns(3)
+    with relio_col:
+        st.markdown("""##### RELIO """)
     with fr_col1:
         st.markdown("""##### Frouros - EMD """, help="Earth Mover's Distance : ou bien Wasserstein d'ordre 1")
     with fr_col2:
@@ -242,21 +241,21 @@ if button:
             if(api.get_action()==0):
                 drift_time = datetime.datetime.now().strftime("%H:%M:%S")
                 st.toast(f":red[Un drift est détecté à partir de la donnée d'indice  {i+1-window_size} à {drift_time}]", icon="⚠️")
-                with ot2d_col:
-                    st.error(f" OT2D : Un drift est détecté à partir de la donnée d'indice  {i+1-window_size} à {drift_time}", icon="⚠️")
+                with relio_col:
+                    st.error(f" RELIO : Un drift est détecté à partir de la donnée d'indice  {i+1-window_size} à {drift_time}", icon="⚠️")
                 drift_type=api.identifyType()
-                with ot2d_col :
+                with relio_col :
                     if(drift_type != None):
-                        if drift_type == ot2d.DriftType.GRADUAL:
+                        if drift_type == relio.DriftType.GRADUAL:
                             st.toast(f':blue[Le type de drift est : Graduel]', icon="📌")
                             st.info(f'Le type de drift est : Graduel', icon="📌")
-                        elif drift_type == ot2d.DriftType.SUDDEN:
+                        elif drift_type == relio.DriftType.SUDDEN:
                             st.toast(f':blue[Le type de drift est : Soudain]', icon="📌")
                             st.info(f'Le type de drift est : Soudain', icon="📌")
-                        elif drift_type == ot2d.DriftType.RECURRENT:
+                        elif drift_type == relio.DriftType.RECURRENT:
                             st.toast(f':blue[Le type de drift est : Récurrent]', icon="📌")
                             st.info(f'Le type de drift est : Récurrent', icon="📌")
-                        elif drift_type == ot2d.DriftType.INCREMENTAL:
+                        elif drift_type == relio.DriftType.INCREMENTAL:
                             st.toast(f':blue[Le type de drift est : Incrémental]', icon="📌")
                             st.info(f'Le type de drift est : Incrémental', icon="📌")
                 api.reset_retrain_model()
@@ -269,7 +268,7 @@ if button:
             elif (api.get_action()==1):
                 alert_time = datetime.datetime.now().strftime("%H:%M:%S")
                 st.toast(f"Alerte : Un petit changement de distribution s'est produit  à partir de la donnée d'indice {i+1-window_size} à {alert_time}!", icon="❗")
-                with ot2d_col:
+                with relio_col:
                     st.warning(f"Alerte : Un petit changement de distribution s'est produit  à partir de la donnée d'indice {i+1-window_size} à {alert_time}!", icon="❗")
                 train_X=np.concatenate((ref_dist_X, win_X))
                 train_y=np.concatenate((ref_dist_y, win_y))               
@@ -296,17 +295,17 @@ if button:
 
 
         drift_type=api.identifyType()
-        with ot2d_col:
+        with relio_col:
             if(drift_type != None):
-                if drift_type == ot2d.DriftType.GRADUAL:
+                if drift_type == relio.DriftType.GRADUAL:
                     st.toast(f':blue[Le type de drift est : Graduel]', icon="📌")
                     st.info(f'Le type de drift est : Graduel', icon="📌")
-                elif drift_type == ot2d.DriftType.SUDDEN:
+                elif drift_type == relio.DriftType.SUDDEN:
                     st.toast(f':blue[Le type de drift est : Soudain]', icon="📌")
                     st.info(f'Le type de drift est : Soudain', icon="📌")
-                elif drift_type == ot2d.DriftType.RECURRENT:
+                elif drift_type == relio.DriftType.RECURRENT:
                     st.toast(f':blue[Le type de drift est : Récurrent]', icon="📌")
                     st.info(f'Le type de drift est : Récurrent', icon="📌")
-                elif drift_type == ot2d.DriftType.INCREMENTAL:
+                elif drift_type == relio.DriftType.INCREMENTAL:
                     st.toast(f':blue[Le type de drift est : Incrémental]', icon="📌")
                     st.info(f'Le type de drift est : Incrémental', icon="📌")

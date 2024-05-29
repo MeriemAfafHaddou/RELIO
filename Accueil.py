@@ -1,28 +1,23 @@
 import streamlit as st
 import pandas as pd
-import OT2D_API as ot2d
+import RELIO_API as relio
 import time
 import numpy as np
 st.set_page_config(layout="wide")
 
 st.write("""
-# OT2D : Optimal Transport Drift Detection
+# RELIO : Reliable Drift Detection API
          """)
 cd_container = st.container(border=True)
 cd_container.write("""
 ### :question: Qu'est-ce que le concept drift?
-Le concept drift se produit lorsque la distribution des données change avec le temps, ce qui rend le modèle d'apprentissage automatique supervisé ou non supervisé obsolète.
+Le concept drift se produit lorsque :red-background[la distribution des données change avec le temps], ce qui rend le modèle d'apprentissage automatique supervisé ou non supervisé :red-background[obsolète].
          """)
 
-ot_container = st.container(border=True)
-ot_container.write("""
-### :question: Qu'est-ce que le transport optimal?
-Le Transport Optimal est une méthode mathématique qui permet de trouver la meilleure correspondance entre deux distributions de probabilité. Il offre des métriques fiable pour comparer les distributions de données.
-                  """)
 cd_container = st.container(border=True)
 cd_container.write("""
-### :bulb: Optimal Transport Drift Detection API
-Optimal Transport Drift Detection (OT2D) est une interface de programmation d'application qui permet de détecter le concept drift causé par le changement de distribution dans les flux de données en temps réel.
+### :bulb: RELIO API
+RELIO API est une interface de programmation d'application qui permet de :blue-background[détecter le concept drift] causé par le changement de distribution dans les flux de données en temps réel, en utilisant le :blue-background[transport optimal] pour quantifier le cout minimale pour transporter une distribution à une autre.
 """)
 st.divider()
 st.write("""

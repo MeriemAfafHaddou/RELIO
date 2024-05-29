@@ -2,6 +2,7 @@ from enum import Enum
 import ot
 import numpy as np
 import pandas as pd
+import random
 
 class DriftType(Enum):
   GRADUAL = 1
@@ -46,6 +47,9 @@ class Concept:
   def increment___length(self):
     self.__length += 1
 
+  def set_ref_distr(self, ref_distr):
+    self.__ref_distr = ref_distr
+
 class ConceptDrift:
 #------------------------------------------------------------------------------------------ ATTRIBUTES ------------------------------------------------------------------------------------------
   __start_time=0
@@ -64,7 +68,7 @@ class ConceptDrift:
   def set_drift_type(self, drift_type):
     self.__drift_type=drift_type
 
-class OT2D:
+class RELIO_API:
   #------------------------------------------------------------------------------------------ ATTRIBUTES ------------------------------------------------------------------------------------------
   __win_size=0
   __curr_win=[]
@@ -223,8 +227,13 @@ class OT2D:
     if result == 0 :
       self.__alert=False
       self.__curr_concept.increment___length()
+      index=random.randint(0, self.__win_size-1)
+      print(f"index : {index}")
+      ref_distr[index]=np.mean(self.__curr_win, axis=0)
+      self.__curr_concept.set_ref_distr(ref_distr)
     elif result == 1 :
       self.__alert=True
+      self.__abrupt=False
       self.__ajust_model=True
       self.__curr_concept.increment___length()
       self.__concerned_win=self.__curr_win
