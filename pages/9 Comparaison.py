@@ -100,7 +100,7 @@ elif option == "Synthétique : Insects Incrémental":
     win_size=500
 elif option == "Synthétique : SEA":
     sea = SEA(seed=31)
-    it = sea.generate_dataset(block=1, noise=0.6, num_samples=1000)
+    it = sea.generate_dataset(block=3, noise=0.4, num_samples=500)
     # Convert the iterator to a list of tuples
     data = list(it)
 
@@ -113,9 +113,7 @@ elif option == "Synthétique : SEA":
     # Create the DataFrame
     df = pd.DataFrame(array_data)
     df['class'] = ints
-    alert_thold=0.5
-    detect_thold=0.7
-    win_size=100
+    win_size=50
 #Modify parameters
 col1, col2 = st.columns(2)
 st.markdown("")
@@ -145,21 +143,11 @@ with btn1:
         detect_thold=st.number_input('Introduire le Pourcentage de détection', min_value=1, value=50, placeholder="Pourcentage de détection")
         stblty_thold=st.number_input('Introduire le seuil de stabilité', min_value=1, value=3, placeholder="Seuil de stabilité")
 
+pc1 = pca.fit_transform(df.iloc[:,:-1])
 
 #API initialization
-api=relio.RELIO_API(window_size, alert_thold, detect_thold, ot_metric, cost_function, stblty_thold, df )
+api=relio.RELIO_API(window_size, alert_thold, detect_thold, ot_metric, cost_function, stblty_thold, pd.DataFrame(pc1) )
 
-ref_dist=[]
-for i in range(window_size):
-    ref_dist.append(df.iloc[i])
-first_concept=relio.Concept(1, np.array(ref_dist))
-api.add_concept(first_concept)
-api.set_curr_concept(first_concept)
-current_window=[]
-drifts = []
-ref_dist_X = np.array(ref_dist)[:, :-1]
-ref_dist_y = np.array(ref_dist)[:, -1].astype(int)
-all_classes=np.unique(np.array(df)[:,-1].astype(int))
 
 with col1:
     st.markdown(f"""
@@ -181,7 +169,6 @@ with col2:
     st.markdown(f"""
         :small_red_triangle_down: Seuil de stabilité : ***{stblty_thold} fenêtres***
                 """, help="C'est :red-background[le nombre de fenetre] pour dire que les données sont :red-background[stables sur une distribution], autrement dit : absence de drift.")    
-pc1 = pca.fit_transform(df.iloc[:,:-1])
 fr_win=np.array([])
 emd_detector = EMD(
     callbacks=[
@@ -207,16 +194,29 @@ js_detector=JS(
         ),
     ],
 )
-alpha = 0.01
+alpha = 0.05
 fr_ref=pc1[:win_size]
 _ = emd_detector.fit(X=fr_ref)
 _ = js_detector.fit(X=fr_ref)
+
+ref_dist=[]
+for i in range(window_size):
+    ref_dist.append(df.iloc[i])
+first_concept=relio.Concept(1, np.array(fr_ref))
+api.add_concept(first_concept)
+api.set_curr_concept(first_concept)
+current_window=[]
+drifts = []
+ref_dist_X = fr_ref
+ref_dist_y = np.array(ref_dist)[:, -1].astype(int)
+all_classes=np.unique(np.array(df)[:,-1].astype(int))
 
 with btn2:
     button=st.button(":arrow_forward: Lancer le test ", type="primary")
 if button:
     st.toast("Initialisation de l'API en cours...", icon="⏳")
-
+    print(api.get_alert_thold())
+    print(api.get_detect_thold())
     st.write("""
     ##### :bar_chart: Évolution de la distribution de données : 
     """)
@@ -241,10 +241,11 @@ if button:
         chart.line_chart(pc1[:i])
         current_window.append(df.iloc[i-1])   
         if len(current_window) == window_size:
-            api.set_curr_win(np.array(current_window))
-            api.monitorDrift()
             fr_win=pc1[i-window_size:i]
-            win_X=np.array(current_window)[:, :-1]
+            win_X=fr_win
+            api.set_curr_win(np.array(win_X))
+            api.monitorDrift()
+            
             win_y=np.array(current_window)[:, -1].astype(int)            
             if(api.get_action()==0):
                 drift_time = datetime.datetime.now().strftime("%H:%M:%S")
@@ -282,6 +283,7 @@ if button:
                 train_y=np.concatenate((ref_dist_y, win_y))               
                 api.reset_ajust_model()            
             
+            print(f"DISTANCE = {api.get_distances()[-1]}")
             emd_dist,callbacks_log=emd_detector.compare(X=fr_win)
             p_value = callbacks_log["permutation_test"]["p_value"]
             if(p_value <= alpha):

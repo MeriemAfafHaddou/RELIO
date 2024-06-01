@@ -129,9 +129,9 @@ if model_type== "Supervisé - Stochastic Gradient Descent":
     grid_search.fit(ref_dist_X, ref_dist_y)
     best_params = grid_search.best_params_
     model = SGDClassifier(**best_params, random_state=42)
-    model.partial_fit(ref_dist_X, ref_dist_y, all_classes)
+    model.fit(ref_dist_X, ref_dist_y)
     drifted_model=SGDClassifier(**best_params,random_state=42)
-    drifted_model.partial_fit(ref_dist_X, ref_dist_y, all_classes)
+    drifted_model.fit(ref_dist_X, ref_dist_y)
     metric_name="de la Précision"
 elif model_type == "Non supervisé - KMeans":
     silhouette_avg = []
@@ -143,9 +143,9 @@ elif model_type == "Non supervisé - KMeans":
     n=np.argmax(silhouette_avg)+2
     model= MiniBatchKMeans(n_clusters=n, random_state=42)
     drifted_model=MiniBatchKMeans(n_clusters=n, random_state=42)
-    model=model.fit(ref_dist_X)
+    model=model.partial_fit(ref_dist_X)
     cluster_labels_model=model.labels_
-    drifted_model=drifted_model.fit(ref_dist_X)
+    drifted_model=drifted_model.partial_fit(ref_dist_X)
     cluster_labels_drift=drifted_model.labels_
     adapt_perform.append(silhouette_score(ref_dist_X, cluster_labels_model))
     drift_impacts.append(silhouette_score(ref_dist_X,cluster_labels_drift))
@@ -259,7 +259,7 @@ if button:
 
             metric_data=pd.DataFrame()
             metric_data['Avec adaptation']=adapt_perform[:i]
-            metric_data['Sans adaptation']=drift_impacts[:i]
+            metric_data['Impact du drift']=drift_impacts[:i]
             metric_chart.line_chart(metric_data, color=["#338AFF", "#FF0D0D"])
 
 
