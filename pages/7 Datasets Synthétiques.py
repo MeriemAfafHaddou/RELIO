@@ -41,10 +41,10 @@ option = st.selectbox(
     ("Insects : Soudain", "Insects : Incrémental"))
 if option == "Insects : Soudain":
     df=pd.read_csv("data/insects_sudden.csv", header=None)[9800:13800]
-    win_size=500
+    win_size=200
 elif option == "Insects : Incrémental":
     df=pd.read_csv("data/insects_incremental.csv", header=None)[32000:37000]
-    win_size=500
+    win_size=200
 all_classes=np.array(df)[:,-1]
 col1, col2 = st.columns(2)
 st.markdown("")
@@ -96,26 +96,26 @@ all_classes=np.unique(np.array(df)[:,-1].astype(int))
 with col1:
     st.markdown(f"""
         :small_red_triangle_down: Taille de la fenêtre : ***{window_size} Données***
-    """, help="c'est le :red-background[nombre de données] à considérer pour le calcul de la métrique de drift.")
+    """, help="c'est le :blue-background[nombre de données] à considérer pour le calcul de la métrique de drift.")
     st.markdown(f"""
         :small_red_triangle_down: Métrique de détection : ***{metric_input}***
-    """, help="c'est la métrique basée sur le transport optimal pour :red-background[comparer les distributions] de données afin de détecter le drift.Le transport optimal possède une variété de métriques. Nous avons opté pour celles les plus utilisées dans la littérature.")
+    """, help="c'est la métrique basée sur le transport optimal pour :blue-background[comparer les distributions] de données afin de détecter le drift.Le transport optimal possède une variété de métriques. Nous avons opté pour celles les plus utilisées dans la littérature.")
     st.markdown(f"""
         :small_red_triangle_down: Fonction de coût : ***{cost_input}***
-    """, help=" c'est une :red-background[distance calculée entre les paires de données] de deux distibutions, utilisée par les métriques du transport optimal.")
+    """, help=" c'est une :blue-background[distance calculée entre les paires de données] de deux distibutions, utilisée par les métriques du transport optimal.")
     st.markdown(f"""
         :small_red_triangle_down: Type de modèle : ***{model_type}***
-    """, help="Pour spécifier si le modèle utilisé est :red-background[supervisé ou non supervisé].")
+    """, help="Pour spécifier si le modèle utilisé est :blue-background[supervisé ou non supervisé].")
 with col2:
     st.markdown(f"""
         :small_red_triangle_down: Pourcentage d'alerte : ***{alert_thold}%***
-                """, help="c'est le :red-background[pourcentage de changement de distribution] à partir duquel une alerte est déclenchée. Autrement dit, si la metrique de comparaison augmente de 20% alors une alerte est déclenchée.")
+                """, help="c'est le :blue-background[pourcentage de changement de distribution] à partir duquel une alerte est déclenchée. Autrement dit, si la metrique de comparaison augmente de 20% alors une alerte est déclenchée.")
     st.markdown(f"""
         :small_red_triangle_down: Pourcentage de détection : ***{detect_thold}%***
-                """, help="c'est le :red-background[pourcentage de changement de distribution] à partir duquel le drift est détecté. Autrement dit, si la metrique de comparaison augmente de 50% alors le drift est détecté.")
+                """, help="c'est le :blue-background[pourcentage de changement de distribution] à partir duquel le drift est détecté. Autrement dit, si la metrique de comparaison augmente de 50% alors le drift est détecté.")
     st.markdown(f"""
         :small_red_triangle_down: Seuil de stabilité : ***{stblty_thold} fenêtres***
-                """, help="C'est :red-background[le nombre de fenetre] pour dire que les données sont :red-background[stables sur une distribution], autrement dit : absence de drift.")    
+                """, help="C'est :blue-background[le nombre de fenetre] pour dire que les données sont :blue-background[stables sur une distribution], autrement dit : absence de drift.")    
 pc1 = pca.fit_transform(df.iloc[:,:-1])
 with btn2:
     button=st.button(":arrow_forward: Lancer le test ", type="primary")
@@ -213,7 +213,6 @@ if button:
                         st.info(f'Le type de drift est : Incrémental', icon="📌")
                 api.reset_retrain_model()
 
-                print(f"UNIQUE : {np.unique(win_y)}")
                 train_X=np.concatenate((ref_dist_X, win_X))
                 train_y=np.concatenate((ref_dist_y, win_y))
                 if model_type== "Supervisé - Stochastic Gradient Descent":

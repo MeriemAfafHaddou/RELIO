@@ -20,7 +20,7 @@ st.markdown(""" """)
 cd_container = st.container(border=True)
 cd_container.write("""
 ### :question: Qu'est-ce que le concept drift?
-Le concept drift se produit lorsque :red-background[la distribution des données change avec le temps], ce qui rend le modèle d'apprentissage automatique supervisé ou non supervisé :red-background[obsolète].
+Le concept drift se produit lorsque :blue-background[la distribution des données change avec le temps], ce qui rend le modèle d'apprentissage automatique supervisé ou non supervisé :blue-background[obsolète].
                    D'où la nécessité de mettre en place une solution de détection de drift fiable et robuste.
          """)
 st.markdown(""" """)

@@ -98,7 +98,6 @@ class RELIO_API:
     self.__cost_fun=cost_function
     self.__ot_metric=ot_metric
     estimated_mean=self.estimate_thold(df)
-    print(f"estimated mean : {estimated_mean}")
     self.__alert_thold=estimated_mean*(1+alert_percent/100)
     self.__detect_thold=estimated_mean*(1+detect_percent/100)
 
@@ -229,7 +228,6 @@ class RELIO_API:
       self.__alert=False
       self.__curr_concept.increment___length()
       index=random.randint(0, self.__win_size-1)
-      print(f"index : {index}")
       ref_distr[index]=np.mean(self.__curr_win, axis=0)
       self.__curr_concept.set_ref_distr(ref_distr)
     elif result == 1 :
@@ -261,7 +259,6 @@ class RELIO_API:
     """
     dist1=dataset.sample(n=self.__win_size, random_state=42)
     dist2=dataset.sample(n=self.__win_size, random_state=2024)
-    print(f"win size : {self.__win_size}")
     distance=self.compareDistr(np.array(dist1), np.array(dist2))[1]
     return round(distance, 2)
   #--------------------------------------------------------------------------------------------------------
