@@ -213,7 +213,7 @@ if button:
                 train_X=np.concatenate((ref_dist_X, win_X))
                 train_y=np.concatenate((ref_dist_y, win_y))
                 if model_type== "Supervisé - Stochastic Gradient Descent":
-                    model.fit(train_X, train_y)
+                    model.fit(win_X, win_y)
                 elif model_type == "Non supervisé - KMeans":
                     silhouette_avg = []
                     K = range(2, 11)  # Nombre de clusters à tester de 2 à 10 (car silhouette_score n'est pas défini pour k=1)
