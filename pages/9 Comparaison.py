@@ -223,6 +223,11 @@ if button:
        🔻 Qualité de la présentation de l'axe 1 =  **{pca.explained_variance_ratio_[0] * 100:.2f}%**
     """)
     st.divider()
+    st.write(f"""
+    ##### 	:chart_with_upwards_trend: Évolution de la distance de {metric_input} entre la distribution de référence et la fenêtre courante  : 
+    """)
+    distances=st.empty()
+    st.divider()
     st.write("""
             ### :scales: Comparaison des résultats de détection: 
     """)
@@ -243,6 +248,11 @@ if button:
             win_X=fr_win
             api.set_curr_win(np.array(win_X))
             api.monitorDrift()
+
+            distances_data=pd.DataFrame(api.get_distances()[:i], columns=['Distance'])
+            distances_data['Alerte']=api.get_alert_thold()
+            distances_data['Détection']=api.get_detect_thold()
+            distances.line_chart(distances_data, color=["#FFAC1C","#338AFF", "#FF0D0D"])
             
             win_y=np.array(current_window)[:, -1].astype(int)            
             if(api.get_action()==0):
@@ -301,6 +311,7 @@ if button:
             fr_win=np.array([])
 
 
+        
         drift_type=api.identifyType()
         with relio_col:
             if(drift_type != None):

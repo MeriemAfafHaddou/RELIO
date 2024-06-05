@@ -42,9 +42,13 @@ option = st.selectbox(
 if option == "Insects : Soudain":
     df=pd.read_csv("data/insects_sudden.csv", header=None)[9800:13800]
     win_size=200
+    alert_init=50
+    detect_init=70
 elif option == "Insects : Incrémental":
     df=pd.read_csv("data/insects_incremental.csv", header=None)[32000:37000]
     win_size=200
+    alert_init=50
+    detect_init=70
 all_classes=np.array(df)[:,-1]
 col1, col2 = st.columns(2)
 st.markdown("")
@@ -72,8 +76,8 @@ with btn1:
             cost_function = relio.CostFunction.SEUCLIDEAN
         elif cost_input == 'Mahalanobis':    
             cost_function = relio.CostFunction.MAHALANOBIS
-        alert_thold=st.number_input('Introduire le Pourcentage d\'alerte', min_value=1, value=10, placeholder="Pourcentage d'alerte")
-        detect_thold=st.number_input('Introduire le Pourcentage de détection', min_value=1, value=30, placeholder="Pourcentage de détection")
+        alert_thold=st.number_input('Introduire le Pourcentage d\'alerte', min_value=1, value=alert_init, placeholder="Pourcentage d'alerte")
+        detect_thold=st.number_input('Introduire le Pourcentage de détection', min_value=1, value=detect_init, placeholder="Pourcentage de détection")
         stblty_thold=st.number_input('Introduire le seuil de stabilité', min_value=1, value=3, placeholder="Seuil de stabilité")
 
 #API initialization

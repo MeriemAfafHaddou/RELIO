@@ -290,6 +290,7 @@ class RELIO_API:
         drifts_length.append(concept.get_length())
 
       if self.isGradual(drifts_length):
+        self.__abrupt=False
         self.__concept_drifts[-1].set_drift_type(DriftType.GRADUAL)
         self.__reappearing_count=0
         return DriftType.GRADUAL
@@ -303,6 +304,7 @@ class RELIO_API:
 
 
       if not self.isGradual(drifts_length) and self.__concepts[-1].get_length() != 1:
+        self.__abrupt=False
         self.__concept_drifts[-1].set_drift_type(DriftType.RECURRENT)
         self.__reappearing_count=0
         return DriftType.RECURRENT

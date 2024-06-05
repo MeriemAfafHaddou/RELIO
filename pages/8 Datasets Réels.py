@@ -34,7 +34,7 @@ st.write("""
 # Dataset choice
 option = st.selectbox(
     ":bar_chart: Quel dataset voulez vous choisir?",
-    ("Asfault", "Electricity","Outdoor Objects", "Ozone"))
+    ("Asfault", "Electricity", "Ozone"))
 
 if option == "Asfault":
     df=pd.read_csv("data/Asfault.csv", header=None)[:5000]

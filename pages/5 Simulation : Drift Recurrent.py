@@ -62,8 +62,8 @@ with btn1:
             cost_function = relio.CostFunction.SEUCLIDEAN
         elif cost_input == 'Mahalanobis':    
             cost_function = relio.CostFunction.MAHALANOBIS
-        alert_thold=st.number_input('Introduire le Pourcentage d\'alerte', min_value=1, value=10, placeholder="Pourcentage d'alerte",step=1)
-        detect_thold=st.number_input('Introduire le Pourcentage de détection', min_value=1, value=30, placeholder="Pourcentage de détection",step=1)
+        alert_thold=st.number_input('Introduire le Pourcentage d\'alerte', min_value=1, value=5, placeholder="Pourcentage d'alerte",step=1)
+        detect_thold=st.number_input('Introduire le Pourcentage de détection', min_value=1, value=25, placeholder="Pourcentage de détection",step=1)
         stblty_thold=st.number_input('Introduire le seuil de stabilité', min_value=1, value=4, placeholder="Seuil de stabilité")
 
 api=relio.RELIO_API(window_size, alert_thold, detect_thold, ot_metric, cost_function, stblty_thold, df)
@@ -79,6 +79,8 @@ adapt_perform=[]
 current_model=0
 ref_dist_X = np.array(ref_dist)[:, :-1]
 ref_dist_y = np.array(ref_dist)[:, -1].astype(int)
+first_ref_X=ref_dist_X
+first_ref_y=ref_dist_y
 all_classes=np.unique(np.array(df)[:,-1].astype(int))
 
 with col1:
@@ -117,9 +119,9 @@ if model_type== "Supervisé - Stochastic Gradient Descent":
     grid_search.fit(ref_dist_X, ref_dist_y)
     best_params = grid_search.best_params_
     model = SGDClassifier(**best_params, random_state=42)
-    model.partial_fit(ref_dist_X, ref_dist_y, all_classes)
+    model.partial_fit(ref_dist_X, ref_dist_y,all_classes)
     drifted_model=SGDClassifier(**best_params,random_state=42)
-    drifted_model.partial_fit(ref_dist_X, ref_dist_y, all_classes)
+    drifted_model.partial_fit(ref_dist_X, ref_dist_y,all_classes)
     metric_name="de la Précision"
 elif model_type == "Non supervisé - KMeans":
     silhouette_avg = []
@@ -141,7 +143,7 @@ elif model_type == "Non supervisé - KMeans":
 if button:
     st.toast("Initialisation de l'API en cours...", icon="⏳")
     st.write("""
-    ##### :bar_chart: Évolution de la distribution de données : 
+    ##### :bar_chart: Évolution de la distribution de données (Première Composante Principale) :
     """)
     chart = st.empty()
     st.write(f"""
@@ -201,7 +203,8 @@ if button:
                 train_X=np.concatenate((ref_dist_X, win_X))
                 train_y=np.concatenate((ref_dist_y, win_y))
                 if model_type== "Supervisé - Stochastic Gradient Descent":
-                    model.fit(train_X, train_y)
+                    model.fit(win_X, win_y)
+                    
                 elif model_type == "Non supervisé - KMeans":
                     if current_model == 0:
                         silhouette_avg = []

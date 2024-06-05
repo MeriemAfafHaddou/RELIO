@@ -63,7 +63,7 @@ with btn1:
         elif cost_input == 'Mahalanobis':    
             cost_function = relio.CostFunction.MAHALANOBIS
         alert_thold=st.number_input('Introduire le pourcentage d\'alerte', min_value=1, value=10, placeholder="Pourcentage d'alerte", step=1)
-        detect_thold=st.number_input('Introduire le pourcentage de détection', min_value=1, value=40, placeholder="Pourcentage de détection",step=1)
+        detect_thold=st.number_input('Introduire le pourcentage de détection', min_value=1, value=25, placeholder="Pourcentage de détection",step=1)
         stblty_thold=st.number_input('Introduire le seuil de stabilité', min_value=1, value=3, placeholder="Seuil de stabilité", step=1)
 
 api=relio.RELIO_API(window_size, alert_thold, detect_thold, ot_metric, cost_function, stblty_thold, df )
@@ -140,7 +140,7 @@ elif model_type == "Non supervisé - KMeans":
 if button:
     st.toast("Initialisation de l'API en cours...", icon="⏳")
     st.write("""
-    ##### :bar_chart: Évolution de la distribution de données : 
+    ##### :bar_chart: Évolution de la distribution de données (Première Composante Principale) : 
     """)
     chart = st.empty()
     st.write(f"""
@@ -177,7 +177,10 @@ if button:
 
                 y_pred_drift=drifted_model.predict(win_X)
                 drifted_metric=accuracy_score(y_pred_drift, win_y)
- 
+            
+            train_X=np.concatenate((ref_dist_X, win_X))
+            train_y=np.concatenate((ref_dist_y, win_y))
+
             if(api.get_action()==0):
                 drift_time = datetime.datetime.now().strftime("%H:%M:%S")
                 st.toast(f":red[Un drift est détecté à partir de la donnée d'indice  {i+1-window_size} à {drift_time}]", icon="⚠️")
@@ -197,8 +200,6 @@ if button:
                         st.toast(f':blue[Le type de drift est : Incrémental]', icon="📌")
                         st.info(f'Le type de drift est : Incrémental', icon="📌")
                 api.reset_retrain_model()
-                train_X=np.concatenate((ref_dist_X, win_X))
-                train_y=np.concatenate((ref_dist_y, win_y))
                 if model_type== "Supervisé - Stochastic Gradient Descent":
                     model.fit(train_X, train_y)
                 elif model_type == "Non supervisé - KMeans":
