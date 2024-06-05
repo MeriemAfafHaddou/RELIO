@@ -31,7 +31,7 @@ option = st.selectbox(
     ("Simulation : Drift Soudain","Simulation : Drift Graduel","Simulation : Drift Récurrent","Simulation : Drift Incrémental","Synthétique : Insects Soudain","Synthétique : Insects Incrémental","Synthétique : SEA","Asfault", "Electricity","Outdoor Objects", "Ozone"))
 
 if option == "Asfault":
-    df=pd.read_csv("data/Asfault.csv", header=None)[:5000]
+    df=pd.read_csv("data/Asfault.csv", header=None)[:8000]
     label_encoder = LabelEncoder()
     df['class'] = label_encoder.fit_transform(df[64])
     class_mapping = dict(zip(label_encoder.classes_, label_encoder.transform(label_encoder.classes_)))

@@ -37,7 +37,7 @@ option = st.selectbox(
     ("Asfault", "Electricity", "Ozone"))
 
 if option == "Asfault":
-    df=pd.read_csv("data/Asfault.csv", header=None)[:5000]
+    df=pd.read_csv("data/Asfault.csv", header=None)[:8000]
     label_encoder = LabelEncoder()
     df['class'] = label_encoder.fit_transform(df[64])
     class_mapping = dict(zip(label_encoder.classes_, label_encoder.transform(label_encoder.classes_)))
@@ -150,9 +150,9 @@ if model_type== "Supervisé - Stochastic Gradient Descent":
     grid_search.fit(ref_dist_X, ref_dist_y)
     best_params = grid_search.best_params_
     model = SGDClassifier(**best_params, random_state=42)
-    model.partial_fit(ref_dist_X, ref_dist_y, all_classes)
+    model.fit(ref_dist_X, ref_dist_y)
     drifted_model=SGDClassifier(**best_params,random_state=42)
-    drifted_model.partial_fit(ref_dist_X, ref_dist_y, all_classes)
+    drifted_model.fit(ref_dist_X, ref_dist_y)
     metric_name="de la Précision"
 elif model_type == "Non supervisé - KMeans":
     silhouette_avg = []
@@ -260,7 +260,7 @@ if button:
                 train_X=np.concatenate((ref_dist_X, win_X))
                 train_y=np.concatenate((ref_dist_y, win_y))               
                 if model_type== "Supervisé - Stochastic Gradient Descent":
-                    model.partial_fit(win_X, win_y, classes=np.unique(win_y))
+                    model.partial_fit(win_X, win_y, all_classes)
                 elif model_type == "Non supervisé - KMeans":
                     model.partial_fit(win_X)                
                 api.reset_ajust_model()
