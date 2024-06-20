@@ -34,7 +34,7 @@ st.write("""
 # Dataset choice
 option = st.selectbox(
     ":bar_chart: Quel dataset voulez vous choisir?",
-    ("Asfault", "Electricity", "Ozone"))
+    ("Ozone","Asfault"))
 
 if option == "Asfault":
     df=pd.read_csv("data/Asfault.csv", header=None)[:8000]
@@ -43,20 +43,10 @@ if option == "Asfault":
     class_mapping = dict(zip(label_encoder.classes_, label_encoder.transform(label_encoder.classes_)))
     df = df.drop(64,axis='columns')
     df.columns= df.columns.astype(str)
-    win_size=250
-
-elif option == "Electricity":
-    df=pd.read_csv('data/electricity.csv')[:8000]
-    label_encoder = LabelEncoder()
-    df['Class'] = label_encoder.fit_transform(df['class'])
-    class_mapping = dict(zip(label_encoder.classes_, label_encoder.transform(label_encoder.classes_)))
-    df = df.drop('class',axis='columns')
-    df.columns= df.columns.astype(str)
     win_size=500
-
-elif option == "Outdoor Objects":
-    df=pd.read_csv("data/outdoor.csv", header=None)
-    win_size=500
+    alert_init=10
+    detect_init=20
+    model=1
   
 elif option == "Ozone":
     df=pd.read_csv('data/Ozone.csv', header=None)
@@ -65,7 +55,10 @@ elif option == "Ozone":
     class_mapping = dict(zip(label_encoder.classes_, label_encoder.transform(label_encoder.classes_)))
     df = df.drop(72,axis='columns')
     df.columns= df.columns.astype(str)
-    win_size=200
+    win_size=150
+    alert_init=50
+    detect_init=70
+    model=0
 
 col1, col2 = st.columns(2)
 st.markdown("")
@@ -76,7 +69,7 @@ with btn1:
         st.write("""
         :gear: Modifier les paramètres du test 
         """)
-        model_type=st.selectbox('Choisir le type de modèle', ["Supervisé - Stochastic Gradient Descent", "Non supervisé - KMeans"])
+        model_type=st.selectbox('Choisir le type de modèle', ["Supervisé - Stochastic Gradient Descent", "Non supervisé - KMeans"],index=model)
         window_size = st.number_input('Introduire la taille de la fenêtre', min_value=1, value=win_size, placeholder="Taille de la fenêtre")
         metric_input=st.selectbox('Choisir la métrique de détection', ['Wasserstein d\'ordre 1', 'Wasserstein d\'ordre 2', 'Wasserstein régularisé'], index=1)
         cost_input=st.selectbox('Choisir la fonction de coût', ['Euclidienne', 'Euclidienne Standarisée', 'Mahalanobis'], index=1)
@@ -93,8 +86,8 @@ with btn1:
             cost_function = relio.CostFunction.SEUCLIDEAN
         elif cost_input == 'Mahalanobis':    
             cost_function = relio.CostFunction.MAHALANOBIS
-        alert_thold=st.number_input('Introduire le Pourcentage d\'alerte', min_value=1, value=10, placeholder="Pourcentage d'alerte", step=1)
-        detect_thold=st.number_input('Introduire le Pourcentage de détection', min_value=1, value=30, placeholder="Pourcentage de détection",step=1)
+        alert_thold=st.number_input('Introduire le Pourcentage d\'alerte', min_value=1, value=alert_init, placeholder="Pourcentage d'alerte", step=1)
+        detect_thold=st.number_input('Introduire le Pourcentage de détection', min_value=1, value=detect_init, placeholder="Pourcentage de détection",step=1)
         stblty_thold=st.number_input('Introduire le seuil de stabilité', min_value=1, value=3, placeholder="Seuil de stabilité")
 
 #API initialization
@@ -297,3 +290,8 @@ if button:
             elif drift_type == relio.DriftType.INCREMENTAL:
                 st.toast(f':blue[Le type de drift est : Incrémental]', icon="📌")
                 st.info(f'Le type de drift est : Incrémental', icon="📌")
+
+
+if len(adapt_perform) > 0:
+    print(f"Drift impact mean: {sum(drift_impacts) / len(drift_impacts)}")
+    print(f"Adaptation performance mean: {sum(adapt_perform) / len(adapt_perform)}")

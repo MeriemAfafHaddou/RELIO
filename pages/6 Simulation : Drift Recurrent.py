@@ -4,7 +4,6 @@ import RELIO_API as relio
 import time
 import numpy as np
 import datetime
-import altair as alt
 from sklearn.linear_model import SGDClassifier
 from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import accuracy_score
@@ -14,31 +13,29 @@ from sklearn.decomposition import PCA
 
 st.logo("images/logo.png")
 st.set_page_config(
-   page_title="Simulation - Drift Graduel",
+   page_title="Simulation : Drift Recurrent",
    page_icon="images/icon.png",
    layout="wide",
    initial_sidebar_state="expanded",
 )
 pca = PCA(n_components=1)
 
-
 st.write("""
-# RELIO : Simulation d'un drift graduel
+# RELIO : Simulation d'un drift récurrent
 """)
-with st.expander(":blue[:question: Qu'est-ce qu'un drift graduel ?]",expanded=False):
+with st.expander(":blue[:question: Qu'est-ce qu'un drift récurrent ?]",expanded=False):
     st.write('''
-        Il fait référence à un changement progressif où deux sources, Si et Sj,sont actives simultanément pendant un certain temps. Au fil du temps, la probabilité d’arrivée
-d’une instance de la source Si diminue, tandis que la probabilité d’arrivée d’une instance de
-la source Sj augmente, jusqu’à ce que Sj soit complètement remplacée par Si comme illustré
-dans la figure : 
+        Le concept drift récurrent se réfère à des changements de données qui réapparaissent
+après un certain temps, sans suivre nécessairement un schéma périodique comme indiqué sur
+la figure : 
              
     ''')
-    st.image('images/graduel.png')
+    st.image('images/recurrent.png')
 
 st.write("""
          ### Simulation : 
 """)
-df = pd.read_csv("data/iris_graduel.csv")
+df = pd.read_csv("data/iris_recurrent.csv")
 col1, col2 = st.columns(2)
 st.markdown("")
 btn1, btn2 = st.columns(2)
@@ -65,9 +62,9 @@ with btn1:
             cost_function = relio.CostFunction.SEUCLIDEAN
         elif cost_input == 'Mahalanobis':    
             cost_function = relio.CostFunction.MAHALANOBIS
-        alert_thold=st.number_input('Introduire le pourcentage d\'alerte', min_value=1, value=20, placeholder="Pourcentage d'alerte", step=1)
-        detect_thold=st.number_input('Introduire le pourcentage de détection', min_value=1, value=40, placeholder="Pourcentage de détection",step=1)
-        stblty_thold=st.number_input('Introduire le seuil de stabilité', min_value=1, value=3, placeholder="Seuil de stabilité",step=1)
+        alert_thold=st.number_input('Introduire le Pourcentage d\'alerte', min_value=1, value=5, placeholder="Pourcentage d'alerte",step=1)
+        detect_thold=st.number_input('Introduire le Pourcentage de détection', min_value=1, value=25, placeholder="Pourcentage de détection",step=1)
+        stblty_thold=st.number_input('Introduire le seuil de stabilité', min_value=1, value=4, placeholder="Seuil de stabilité")
 
 api=relio.RELIO_API(window_size, alert_thold, detect_thold, ot_metric, cost_function, stblty_thold, df)
 ref_dist=[]
@@ -82,6 +79,8 @@ adapt_perform=[]
 current_model=0
 ref_dist_X = np.array(ref_dist)[:, :-1]
 ref_dist_y = np.array(ref_dist)[:, -1].astype(int)
+first_ref_X=ref_dist_X
+first_ref_y=ref_dist_y
 all_classes=np.unique(np.array(df)[:,-1].astype(int))
 
 with col1:
@@ -120,9 +119,9 @@ if model_type== "Supervisé - Stochastic Gradient Descent":
     grid_search.fit(ref_dist_X, ref_dist_y)
     best_params = grid_search.best_params_
     model = SGDClassifier(**best_params, random_state=42)
-    model.partial_fit(ref_dist_X, ref_dist_y, all_classes)
+    model.partial_fit(ref_dist_X, ref_dist_y,all_classes)
     drifted_model=SGDClassifier(**best_params,random_state=42)
-    drifted_model.partial_fit(ref_dist_X, ref_dist_y, all_classes)
+    drifted_model.partial_fit(ref_dist_X, ref_dist_y,all_classes)
     metric_name="de la Précision"
 elif model_type == "Non supervisé - KMeans":
     silhouette_avg = []
@@ -144,7 +143,7 @@ elif model_type == "Non supervisé - KMeans":
 if button:
     st.toast("Initialisation de l'API en cours...", icon="⏳")
     st.write("""
-    ##### :bar_chart: Évolution de la distribution de données : 
+    ##### :bar_chart: Évolution de la distribution de données (Première Composante Principale) :
     """)
     chart = st.empty()
     st.write(f"""
@@ -156,12 +155,11 @@ if button:
     distances=st.empty()
     st.divider()
     st.write(f"""
-    ##### 	📉 Impact du drift graduel - Évolution {metric_name} : 
+    ##### 	📉 Impact du drift récurrent - Évolution {metric_name}: 
     """) 
     metric_chart=st.empty()
 
     st.divider()
-
     st.write("""
             ### :clock1: Historique des drifts détectés: 
     """)
@@ -182,6 +180,7 @@ if button:
                 y_pred_drift=drifted_model.predict(win_X)
                 drifted_metric=accuracy_score(y_pred_drift, win_y)
  
+
             if(api.get_action()==0):
                 drift_time = datetime.datetime.now().strftime("%H:%M:%S")
                 st.toast(f":red[Un drift est détecté à partir de la donnée d'indice  {i+1-window_size} à {drift_time}]", icon="⚠️")
@@ -204,7 +203,8 @@ if button:
                 train_X=np.concatenate((ref_dist_X, win_X))
                 train_y=np.concatenate((ref_dist_y, win_y))
                 if model_type== "Supervisé - Stochastic Gradient Descent":
-                    model.fit(train_X, train_y)
+                    model.fit(win_X, win_y)
+                    
                 elif model_type == "Non supervisé - KMeans":
                     if current_model == 0:
                         silhouette_avg = []
@@ -229,11 +229,10 @@ if button:
                 st.warning(f"Alerte : Un petit changement de distribution s'est produit  à partir de la donnée d'indice {i+1-window_size} à {alert_time}!", icon="❗")
                 if model_type== "Supervisé - Stochastic Gradient Descent":
                     model.partial_fit(win_X, win_y)
- 
-
                 elif model_type == "Non supervisé - KMeans":
-                    model.partial_fit(train_X)                
+                    model.partial_fit(win_X)                
                 api.reset_ajust_model()
+
             distances_data=pd.DataFrame(api.get_distances()[:i], columns=['Distance'])
             distances_data['Alerte']=api.get_alert_thold()
             distances_data['Détection']=api.get_detect_thold()
@@ -272,4 +271,8 @@ if button:
                 st.toast(f':blue[Le type de drift est : Incrémental]', icon="📌")
                 st.info(f'Le type de drift est : Incrémental', icon="📌")
         # Pause for a moment
-        time.sleep(0.1)
+        time.sleep(0.05)
+
+if len(adapt_perform) > 0:
+    print(f"Drift impact mean: {sum(drift_impacts) / len(drift_impacts)}")
+    print(f"Adaptation performance mean: {sum(adapt_perform) / len(adapt_perform)}")

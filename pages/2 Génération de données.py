@@ -12,6 +12,7 @@ from sklearn.decomposition import PCA
 from sklearn.cluster import MiniBatchKMeans
 from sklearn.metrics import silhouette_score
 from frouros.datasets.synthetic import SEA
+import statistics
 
 st.logo("images/logo.png")
 st.set_page_config(
@@ -55,7 +56,7 @@ with btn1:
         model_type=st.selectbox('Choisir le type de modèle', ["Supervisé - Stochastic Gradient Descent", "Non supervisé - KMeans"])
         window_size = st.number_input('Introduire la taille de la fenêtre', min_value=1, value=win_size, placeholder="Taille de la fenêtre")
         metric_input=st.selectbox('Choisir la métrique de détection', ['Wasserstein d\'ordre 1', 'Wasserstein d\'ordre 2', 'Wasserstein régularisé'], index=1)
-        cost_input=st.selectbox('Choisir la fonction de coût', ['Euclidienne', 'Euclidienne Standarisée', 'Mahalanobis'], index=2)
+        cost_input=st.selectbox('Choisir la fonction de coût', ['Euclidienne', 'Euclidienne Standarisée', 'Mahalanobis'], index=1)
         if metric_input == 'Wasserstein d\'ordre 1':
             ot_metric = relio.OTMetric.WASSERSTEIN1
         elif metric_input == 'Wasserstein d\'ordre 2':
@@ -274,3 +275,7 @@ if button:
             elif drift_type == relio.DriftType.INCREMENTAL:
                 st.toast(f':blue[Le type de drift est : Incrémental]', icon="📌")
                 st.info(f'Le type de drift est : Incrémental', icon="📌")
+
+if len(adapt_perform) > 0:
+    print(f"Drift impact mean: {sum(drift_impacts) / len(drift_impacts)}")
+    print(f"Adaptation performance mean: {sum(adapt_perform) / len(adapt_perform)}")

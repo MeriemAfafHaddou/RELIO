@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import random
 
+# An enumeration of the four drift types, we also added NONE if the drift has no type
 class DriftType(Enum):
   GRADUAL = 1
   SUDDEN = 2
@@ -11,22 +12,25 @@ class DriftType(Enum):
   RECURRENT = 4
   NONE = 5
 
+# Enumeration of the Optimal Transport metrics that we considered in our solution
 class OTMetric(Enum):
   WASSERSTEIN1 = 1
   WASSERSTEIN2 = 2
   SINKHORN = 3
 
+#Enumartion of the cost function we want to consider when quantifying the transport cost between two distributions
 class CostFunction(Enum):
   EUCLIDEAN = "euclidean"
   SEUCLIDEAN = "seuclidean"
   MAHALANOBIS = "mahalanobis"
 
+#Concept represents the actual relation between the variables X and the output y
 class Concept:
   #------------------------------------------------------------------------------------------ ATTRIBUTES ------------------------------------------------------------------------------------------
-  __start_time=0
-  __length=0
-  __ref_distr=[]
-
+  __start_time=0 #The window index from which this concept has started
+  __length=0 #number of windows which belong to this concept
+  __ref_distr=[] #a representative distribution of this concept
+ 
   #------------------------------------------------------------------------------------------ CONSTRUCTORS ------------------------------------------------------------------------------------------
   def __init__(self, start_time, reference_distribution):
     self.__start_time = start_time
@@ -50,10 +54,11 @@ class Concept:
   def set_ref_distr(self, ref_distr):
     self.__ref_distr = ref_distr
 
+#A class tha represents the concept drift, an object of this class is created once a concept drift is created
 class ConceptDrift:
 #------------------------------------------------------------------------------------------ ATTRIBUTES ------------------------------------------------------------------------------------------
-  __start_time=0
-  __drift_type=DriftType.NONE
+  __start_time=0 #The window index from which this concept drift has started
+  __drift_type=DriftType.NONE #the concept drift type
 
   #---------------------------------------------------------------------------------------- CONSTRUCTORS ----------------------------------------------------------------------------------------
   def __init__(self, start_time, drift_type, ot_value):
@@ -68,27 +73,26 @@ class ConceptDrift:
   def set_drift_type(self, drift_type):
     self.__drift_type=drift_type
 
+#The core of our API
 class RELIO_API:
   #------------------------------------------------------------------------------------------ ATTRIBUTES ------------------------------------------------------------------------------------------
-  __win_size=0
-  __curr_win=[]
-  __curr_win_num=0
-  __curr_concept= Concept(None, None)
-  __alert_thold=0.0
-  __detect_thold=0.0
-  __ot_metric=OTMetric.WASSERSTEIN2
-  __cost_fun=CostFunction.SEUCLIDEAN
-  __stblty_thold=0
-  __retrain_model=False
-  __ajust_model=False
-  __concerned_win=[]
-  __ot_distances=[]
-  __alert=False
-  __abrupt=False
-  __reappearing=False
-  __reappearing_count=0
-  __concept_drifts=[]
-  __concepts=[]
+  __win_size=0 #Size of a window in number of data samples
+  __curr_win=[] #array to store the current window
+  __curr_win_num=0 #Index of the current window, it allows us to store the inforrmation of when the drift occured
+  __curr_concept= Concept(None, None) #The current concept
+  __alert_thold=0.0 #A threshold to detect small changes
+  __detect_thold=0.0 #A threshold to detect significant changes of data distributions, aka concept drift
+  __ot_metric=OTMetric.WASSERSTEIN2 #The OT Metric, from the enumeration
+  __cost_fun=CostFunction.SEUCLIDEAN #The cost function, from the enumeration
+  __stblty_thold=0 #stability thold, to identify sudden and gradual drift
+  __retrain_model=False #A boolean to retrain the model when a drift is detected
+  __ajust_model=False #A boolean to ajust the mosel (partial fit) when a small change is detected
+  __ot_distances=[] #an array to store the values of ot distances
+  __alert=False #a boolean, we set to true if an alert is sent
+  __abrupt=False #a boolean, we set to false if an alert is sent, true otherwise
+  __reappearing_count=0 #counter of how much the same distribution reappears
+  __concept_drifts=[] #an array to store the concept drifts
+  __concepts=[] #an array to store the concepts 
 
   #------------------------------------------------------------------------------------------ CONSTRUCTORS ------------------------------------------------------------------------------------------
   def __init__(self,window_size, alert_percent, detect_percent,ot_metric, cost_function,stability_threshold, df: pd.DataFrame):
@@ -118,9 +122,6 @@ class RELIO_API:
     if self.__retrain_model==True : return 0
     elif self.__ajust_model==True : return 1
     else : return 2
-
-  def get_concerned_data(self):
-    return self.__concerned_win
 
   def get_distances(self):
     return self.__ot_distances
@@ -235,10 +236,8 @@ class RELIO_API:
       self.__abrupt=False
       self.__ajust_model=True
       self.__curr_concept.increment___length()
-      self.__concerned_win=self.__curr_win
     elif result == 2 :
       self.__retrain_model=True
-      self.__concerned_win=self.__curr_win
       concept=Concept(self.__curr_win_num, self.__curr_win)
       self.__curr_concept=concept
       self.__concepts.append(concept)

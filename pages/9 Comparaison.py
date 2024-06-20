@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import RELIO_API as relio
-import time
 import numpy as np
 import datetime
 import numpy as np
@@ -25,10 +24,11 @@ st.write("""
 st.markdown("####")
 pca = PCA(n_components=1)
 
-# Dataset choice
 option = st.selectbox(
     ":bar_chart: Quel dataset voulez vous choisir?",
-    ("Simulation : Drift Soudain","Simulation : Drift Graduel","Simulation : Drift Récurrent","Simulation : Drift Incrémental","Synthétique : Insects Soudain","Synthétique : Insects Incrémental","Synthétique : SEA","Asfault", "Electricity","Outdoor Objects", "Ozone"))
+    ("Données générées","Simulation : Drift Graduel","Simulation : Drift Incrémental","Simulation : Drift Soudain","Simulation : Drift Récurrent","Synthétique : Insects Soudain","Synthétique : Insects Incrémental","Ozone","Asfault"))
+
+col1, col2 = st.columns(2)
 
 if option == "Asfault":
     df=pd.read_csv("data/Asfault.csv", header=None)[:8000]
@@ -37,27 +37,9 @@ if option == "Asfault":
     class_mapping = dict(zip(label_encoder.classes_, label_encoder.transform(label_encoder.classes_)))
     df = df.drop(64,axis='columns')
     df.columns= df.columns.astype(str)
-    alert_thold=6.5
-    detect_thold=7.0
-    win_size=250
-
-elif option == "Electricity":
-    df=pd.read_csv('data/electricity.csv')[:8000]
-    label_encoder = LabelEncoder()
-    df['Class'] = label_encoder.fit_transform(df['class'])
-    class_mapping = dict(zip(label_encoder.classes_, label_encoder.transform(label_encoder.classes_)))
-    df = df.drop('class',axis='columns')
-    df.columns= df.columns.astype(str)
-    alert_thold=2.2
-    detect_thold=2.3
+    alert_thold=20
+    detect_thold=40
     win_size=500
-
-elif option == "Outdoor Objects":
-    df=pd.read_csv("data/outdoor.csv", header=None)
-    alert_thold=4.5
-    detect_thold=5.0
-    win_size=500
-  
 elif option == "Ozone":
     df=pd.read_csv('data/Ozone.csv', header=None)
     label_encoder = LabelEncoder()
@@ -65,40 +47,40 @@ elif option == "Ozone":
     class_mapping = dict(zip(label_encoder.classes_, label_encoder.transform(label_encoder.classes_)))
     df = df.drop(72,axis='columns')
     df.columns= df.columns.astype(str)
-    alert_thold=6.0
-    detect_thold=7.0
-    win_size=200
+    alert_init=150
+    detect_init=170
+    win_size=150
 elif option == "Simulation : Drift Soudain":
     df=pd.read_csv('data/iris_sudden.csv')
-    alert_thold=0.9
-    detect_thold=1.2
+    alert_init=20
+    detect_init=40
     win_size=50
 elif option == "Simulation : Drift Graduel":
     df=pd.read_csv('data/iris_graduel.csv')
-    alert_thold=1.5
-    detect_thold=1.7
+    alert_init=20
+    detect_init=40
     win_size=20
 elif option == "Simulation : Drift Récurrent":
     df=pd.read_csv('data/iris_recurrent.csv')
-    alert_thold=1.5
-    detect_thold=1.7
+    alert_init=20
+    detect_init=40
     win_size=20
 elif option == "Simulation : Drift Incrémental":
     df=pd.read_csv('data/iris_incremental.csv')
-    alert_thold=1.65
-    detect_thold=2.0
+    alert_init=120
+    detect_init=150
     win_size=40
 elif option == "Synthétique : Insects Soudain":
     df=pd.read_csv('data/insects_sudden.csv', header=None)[9800:13800]
-    alert_thold=5.4
-    detect_thold=6.2
-    win_size=500
+    alert_init=60
+    detect_init=80
+    win_size=200
 elif option == "Synthétique : Insects Incrémental":
     df=pd.read_csv('data/insects_incremental.csv', header=None)[32000:37000]
-    alert_thold=4.7
-    detect_thold=5.3
-    win_size=500
-elif option == "Synthétique : SEA":
+    alert_init=140
+    detect_init=170
+    win_size=200
+elif option == "Données générées":
     sea = SEA(seed=31)
     it = sea.generate_dataset(block=3, noise=0.4, num_samples=500)
     # Convert the iterator to a list of tuples
@@ -114,8 +96,10 @@ elif option == "Synthétique : SEA":
     df = pd.DataFrame(array_data)
     df['class'] = ints
     win_size=50
+    alert_init=30
+    detect_init=50
+
 #Modify parameters
-col1, col2 = st.columns(2)
 st.markdown("")
 btn1, btn2 = st.columns(2)
 with btn1:
@@ -124,8 +108,8 @@ with btn1:
         :gear: Modifier les paramètres du test 
         """)
         window_size = st.number_input('Introduire la taille de la fenêtre', min_value=1, value=win_size, placeholder="Taille de la fenêtre")
-        metric_input=st.selectbox('Choisir la métrique de détection', ['Wasserstein d\'ordre 1', 'Wasserstein d\'ordre 2', 'Wasserstein régularisé'], index=0)
-        cost_input=st.selectbox('Choisir la fonction de coût', ['Euclidienne', 'Euclidienne Standarisée', 'Mahalanobis'], index=0)
+        metric_input=st.selectbox('Choisir la métrique de détection', ['Wasserstein d\'ordre 1', 'Wasserstein d\'ordre 2', 'Wasserstein régularisé'], index=1)
+        cost_input=st.selectbox('Choisir la fonction de coût', ['Euclidienne', 'Euclidienne Standarisée', 'Mahalanobis'], index=1)
         if metric_input == 'Wasserstein d\'ordre 1':
             ot_metric = relio.OTMetric.WASSERSTEIN1
         elif metric_input == 'Wasserstein d\'ordre 2':
@@ -141,7 +125,7 @@ with btn1:
             cost_function = relio.CostFunction.MAHALANOBIS
         alert_thold=st.number_input('Introduire le Pourcentage d\'alerte', min_value=1, value=20, placeholder="Pourcentage d'alerte")
         detect_thold=st.number_input('Introduire le Pourcentage de détection', min_value=1, value=50, placeholder="Pourcentage de détection")
-        stblty_thold=st.number_input('Introduire le seuil de stabilité', min_value=1, value=3, placeholder="Seuil de stabilité")
+        stblty_thold=st.number_input('Introduire le seuil de stabilité', min_value=1, value=4, placeholder="Seuil de stabilité")
 
 pc1 = pca.fit_transform(df.iloc[:,:-1])
 
