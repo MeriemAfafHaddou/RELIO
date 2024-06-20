@@ -48,7 +48,7 @@ class Concept:
     return self.__ref_distr
 
   #------------------------------------------------------------------------------------------ METHODS ------------------------------------------------------------------------------------------
-  def increment___length(self):
+  def increment_length(self):
     self.__length += 1
 
   def set_ref_distr(self, ref_distr):
@@ -73,6 +73,8 @@ class ConceptDrift:
   def set_drift_type(self, drift_type):
     self.__drift_type=drift_type
 
+  def get_drift_type(self):
+    return self.__drift_type
 #The core of our API
 class RELIO_API:
   #------------------------------------------------------------------------------------------ ATTRIBUTES ------------------------------------------------------------------------------------------
@@ -227,7 +229,7 @@ class RELIO_API:
     self.__ot_distances.append(ot_dist)
     if result == 0 :
       self.__alert=False
-      self.__curr_concept.increment___length()
+      self.__curr_concept.increment_length()
       index=random.randint(0, self.__win_size-1)
       ref_distr[index]=np.mean(self.__curr_win, axis=0)
       self.__curr_concept.set_ref_distr(ref_distr)
@@ -235,7 +237,7 @@ class RELIO_API:
       self.__alert=True
       self.__abrupt=False
       self.__ajust_model=True
-      self.__curr_concept.increment___length()
+      self.__curr_concept.increment_length()
     elif result == 2 :
       self.__retrain_model=True
       concept=Concept(self.__curr_win_num, self.__curr_win)
@@ -264,10 +266,11 @@ class RELIO_API:
   def identifyType(self):
     #INCREMENTAL DRIFT
     if self.__alert and self.__retrain_model:
-      if len(self.__ot_distances)>2 and self.__ot_distances[-3]<self.__ot_distances[-2]:
-        self.__alert=False
-        self.__concept_drifts[-1].set_drift_type(DriftType.INCREMENTAL)
-        return DriftType.INCREMENTAL
+      if len(self.__ot_distances)>2:
+        if self.__ot_distances[-3]<self.__ot_distances[-2]:
+          self.__alert=False
+          self.__concept_drifts[-1].set_drift_type(DriftType.INCREMENTAL)
+          return DriftType.INCREMENTAL
       elif self.__ot_distances[-1]>self.__ot_distances[-2]:
         self.__alert=False
         self.__concept_drifts[-1].set_drift_type(DriftType.INCREMENTAL)
