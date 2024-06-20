@@ -13,7 +13,7 @@ from sklearn.decomposition import PCA
 
 st.logo("images/logo.png")
 st.set_page_config(
-   page_title="Simulation : Drift Recurrent",
+   page_title="Simulation : Iris Recurrent",
    page_icon="images/icon.png",
    layout="wide",
    initial_sidebar_state="expanded",

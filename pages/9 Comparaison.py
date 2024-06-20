@@ -26,7 +26,7 @@ pca = PCA(n_components=1)
 
 option = st.selectbox(
     ":bar_chart: Quel dataset voulez vous choisir?",
-    ("Données générées","Simulation : Drift Graduel","Simulation : Drift Incrémental","Simulation : Drift Soudain","Simulation : Drift Récurrent","Synthétique : Insects Soudain","Synthétique : Insects Incrémental","Ozone","Asfault"))
+    ("Données générées","Simulation : Iris Graduel","Simulation : Iris Incrémental","Simulation : Iris Soudain","Simulation : Iris Récurrent","Synthétique : Insects Soudain","Synthétique : Insects Incrémental","Ozone","Asfault"))
 
 col1, col2 = st.columns(2)
 
@@ -50,22 +50,22 @@ elif option == "Ozone":
     alert_init=150
     detect_init=170
     win_size=150
-elif option == "Simulation : Drift Soudain":
+elif option == "Simulation : Iris Soudain":
     df=pd.read_csv('data/iris_sudden.csv')
     alert_init=20
     detect_init=40
     win_size=50
-elif option == "Simulation : Drift Graduel":
+elif option == "Simulation : Iris Graduel":
     df=pd.read_csv('data/iris_graduel.csv')
     alert_init=20
     detect_init=40
     win_size=20
-elif option == "Simulation : Drift Récurrent":
+elif option == "Simulation : Iris Récurrent":
     df=pd.read_csv('data/iris_recurrent.csv')
     alert_init=20
     detect_init=40
     win_size=20
-elif option == "Simulation : Drift Incrémental":
+elif option == "Simulation : Iris Incrémental":
     df=pd.read_csv('data/iris_incremental.csv')
     alert_init=120
     detect_init=150

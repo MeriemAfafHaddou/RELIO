@@ -40,10 +40,10 @@ st.divider()
 st.write("""
 ### ▶️ Simulation des différents types de drifts
 """)
-st.page_link("pages/3 Simulation : Drift Graduel.py", label=" Simulation : Drift Graduel", icon="🔻")
-st.page_link("pages/4 Simulation : Drift Incremental.py", label=" Simulation : Drift Incremental", icon="🔻")
-st.page_link("pages/5 Simulation : Drift Soudain.py", label=" Simulation : Drift Soudain", icon="🔻")
-st.page_link("pages/6 Simulation : Drift Recurrent.py", label=" Simulation : Drift Recurrent", icon="🔻")
+st.page_link("pages/3 Simulation : Iris Graduel.py", label=" Simulation : Iris Graduel", icon="🔻")
+st.page_link("pages/4 Simulation : Iris Incremental.py", label=" Simulation : Iris Incremental", icon="🔻")
+st.page_link("pages/5 Simulation : Iris Soudain.py", label=" Simulation : Iris Soudain", icon="🔻")
+st.page_link("pages/6 Simulation : Iris Recurrent.py", label=" Simulation : Iris Recurrent", icon="🔻")
 st.divider()
 
 st.write("""
