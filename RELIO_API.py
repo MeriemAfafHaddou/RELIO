@@ -88,24 +88,31 @@ class RELIO_API:
   __cost_fun=CostFunction.SEUCLIDEAN #The cost function, from the enumeration
   __stblty_thold=0 #stability thold, to identify sudden and gradual drift
   __retrain_model=False #A boolean to retrain the model when a drift is detected
-  __ajust_model=False #A boolean to ajust the mosel (partial fit) when a small change is detected
+  __partial_fit=False #A boolean to ajust the mosel (partial fit) when a small change is detected
   __ot_distances=[] #an array to store the values of ot distances
   __alert=False #a boolean, we set to true if an alert is sent
   __abrupt=False #a boolean, we set to false if an alert is sent, true otherwise
   __reappearing_count=0 #counter of how much the same distribution reappears
   __concept_drifts=[] #an array to store the concept drifts
   __concepts=[] #an array to store the concepts 
-
+  __time=0 #if 0 : time is logical (number of data instances), if 1 : time is physical (time in minutes)
   #------------------------------------------------------------------------------------------ CONSTRUCTORS ------------------------------------------------------------------------------------------
-  def __init__(self,window_size, alert_percent, detect_percent,ot_metric, cost_function,stability_threshold, df: pd.DataFrame):
-    self.__win_size=window_size
+  def __init__(self,window_size, alert_thold, detect_thold,ot_metric, cost_function,stability_threshold, df: pd.DataFrame, time):
+    if time == 0:
+      self.__time=0
+      self.__win_size=window_size   
+      estimated_mean=self.estimate_thold(df)
+      self.__alert_thold=estimated_mean*(1+alert_thold/100)
+      self.__detect_thold=estimated_mean*(1+detect_thold/100)  
+    elif time == 1:
+      self.time=1
+      self.__alert_thold=alert_thold
+      self.__detect_thold=detect_thold
     self.__stblty_thold=stability_threshold
     self.__ot_distances=[]
     self.__cost_fun=cost_function
     self.__ot_metric=ot_metric
-    estimated_mean=self.estimate_thold(df)
-    self.__alert_thold=estimated_mean*(1+alert_percent/100)
-    self.__detect_thold=estimated_mean*(1+detect_percent/100)
+    
 
 
   #------------------------------------------------------------------------------------------ SETTERS ------------------------------------------------------------------------------------------
@@ -122,12 +129,15 @@ class RELIO_API:
   #------------------------------------------------------------------------------------------ GETTERS ------------------------------------------------------------------------------------------
   def get_action(self):
     if self.__retrain_model==True : return 0
-    elif self.__ajust_model==True : return 1
+    elif self.__partial_fit==True : return 1
     else : return 2
 
   def get_distances(self):
     return self.__ot_distances
 
+  def get_concepts(self):
+    return self.__concepts
+  
   def get_curr_win(self):
     return self.__curr_win
 
@@ -141,6 +151,12 @@ class RELIO_API:
     return self.__alert_thold
   def get_detect_thold(self):
     return self.__detect_thold
+  
+  def get_retrain_model(self):
+    return self.__retrain_model
+  
+  def get_partial_fit(self):
+    return self.__partial_fit
   #------------------------------------------------------------------------------------------   METHODS ------------------------------------------------------------------------------------------
   def reset_retrain_model(self):
     self.__retrain_model=False
@@ -148,8 +164,8 @@ class RELIO_API:
   def add_concept(self, newConcept):
     self.__concepts.append(newConcept)
 
-  def reset_ajust_model(self):
-    self.__ajust_model=False
+  def reset_partial_fit(self):
+    self.__partial_fit=False
 
   def compareDistr(self,distr1,dist2):
     """
@@ -215,8 +231,8 @@ class RELIO_API:
     source_1=drifts_lengths[::2]
     source_2=drifts_lengths[1::2]
     #if soucre 1 decreases, and source 2 increases than return true
-    if all(source_1[i] > source_1[i+1] for i in range(len(source_1)-1)):
-      if all(source_2[i] < source_2[i+1] for i in range(len(source_2)-1)):
+    if all(source_1[i] >= source_1[i+1] for i in range(len(source_1)-1)):
+      if all(source_2[i] <= source_2[i+1] for i in range(len(source_2)-1)):
         return True
     return False
   #--------------------------------------------------------------------------------------------------------
@@ -230,13 +246,13 @@ class RELIO_API:
     if result == 0 :
       self.__alert=False
       self.__curr_concept.increment_length()
-      index=random.randint(0, self.__win_size-1)
+      index=random.randint(0, len(self.__curr_win)-1)
       ref_distr[index]=np.mean(self.__curr_win, axis=0)
       self.__curr_concept.set_ref_distr(ref_distr)
     elif result == 1 :
       self.__alert=True
       self.__abrupt=False
-      self.__ajust_model=True
+      self.__partial_fit=True
       self.__curr_concept.increment_length()
     elif result == 2 :
       self.__retrain_model=True

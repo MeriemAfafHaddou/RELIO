@@ -69,7 +69,8 @@ with btn1:
         detect_thold=st.number_input('Introduire le pourcentage de détection', min_value=1, value=40, placeholder="Pourcentage de détection",step=1)
         stblty_thold=st.number_input('Introduire le seuil de stabilité', min_value=1, value=3, placeholder="Seuil de stabilité",step=1)
 
-api=relio.RELIO_API(window_size, alert_thold, detect_thold, ot_metric, cost_function, stblty_thold, df)
+api=relio.RELIO_API(window_size, alert_thold, detect_thold, ot_metric, cost_function, stblty_thold, df, 0)
+
 ref_dist=[]
 for i in range(window_size):
     ref_dist.append(df.iloc[i])
@@ -233,7 +234,7 @@ if button:
 
                 elif model_type == "Non supervisé - KMeans":
                     model.partial_fit(train_X)                
-                api.reset_ajust_model()
+                api.reset_partial_fit()
             distances_data=pd.DataFrame(api.get_distances()[:i], columns=['Distance'])
             distances_data['Alerte']=api.get_alert_thold()
             distances_data['Détection']=api.get_detect_thold()

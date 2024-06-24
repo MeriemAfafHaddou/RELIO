@@ -130,7 +130,7 @@ with btn1:
 pc1 = pca.fit_transform(df.iloc[:,:-1])
 
 #API initialization
-api=relio.RELIO_API(window_size, alert_thold, detect_thold, ot_metric, cost_function, stblty_thold, pd.DataFrame(pc1) )
+api=relio.RELIO_API(window_size, alert_thold, detect_thold, ot_metric, cost_function, stblty_thold, pd.DataFrame(pc1), 0)
 
 
 with col1:
@@ -273,7 +273,7 @@ if button:
                     st.warning(f"Alerte : Un petit changement de distribution s'est produit  à partir de la donnée d'indice {i+1-window_size} à {alert_time}!", icon="❗")
                 train_X=np.concatenate((ref_dist_X, win_X))
                 train_y=np.concatenate((ref_dist_y, win_y))               
-                api.reset_ajust_model()            
+                api.reset_partial_fit()            
             
             emd_dist,callbacks_log=emd_detector.compare(X=fr_win)
             p_value = callbacks_log["permutation_test"]["p_value"]
