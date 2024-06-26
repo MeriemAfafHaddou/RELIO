@@ -105,7 +105,7 @@ class RELIO_API:
       self.__alert_thold=estimated_mean*(1+alert_thold/100)
       self.__detect_thold=estimated_mean*(1+detect_thold/100)  
     elif time == 1:
-      self.time=1
+      self.__time=1
       self.__alert_thold=alert_thold
       self.__detect_thold=detect_thold
     self.__stblty_thold=stability_threshold
@@ -246,9 +246,10 @@ class RELIO_API:
     if result == 0 :
       self.__alert=False
       self.__curr_concept.increment_length()
-      index=random.randint(0, len(self.__curr_win)-1)
-      ref_distr[index]=np.mean(self.__curr_win, axis=0)
-      self.__curr_concept.set_ref_distr(ref_distr)
+      if self.__time==0:
+        index=random.randint(0, len(self.__curr_win)-1)
+        ref_distr[index]=np.mean(self.__curr_win, axis=0)
+        self.__curr_concept.set_ref_distr(ref_distr)
     elif result == 1 :
       self.__alert=True
       self.__abrupt=False

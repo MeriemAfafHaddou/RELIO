@@ -120,11 +120,6 @@ with btn2:
 if button:
     st.toast("Initialisation de l'API en cours...", icon="⏳")
 
-    st.write("""
-    ##### :bar_chart: Évolution de la distribution de données : 
-    """)
-    chart = st.empty()
-
     st.write(f"""
     ##### 	:chart_with_upwards_trend: Évolution de la distance de {metric_input} entre la distribution de référence et la fenêtre courante  : 
     """)

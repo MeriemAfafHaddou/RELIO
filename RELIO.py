@@ -51,9 +51,10 @@ st.write("""
 """)
 st.page_link("pages/7 Datasets Synthétiques.py", label=" Tests : Datasets Synthétiques", icon="🔻")
 st.page_link("pages/8 Datasets Réels.py", label=" Tests : Datasets Réels", icon="🔻")
+st.page_link("pages/9 Application : Réseaux sociaux.py", label=" Application : Réseaux sociaux", icon="🔻")
 
 st.divider()
 st.write("""
 ### ▶️ Comparaison avec d'autres solutions
 """)
-st.page_link("pages/9 Comparaison.py", label=" Comparaison", icon="🔻")
+st.page_link("pages/10 Comparaison.py", label=" Comparaison", icon="🔻")

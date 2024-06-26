@@ -37,8 +37,10 @@ if option == "Asfault":
     class_mapping = dict(zip(label_encoder.classes_, label_encoder.transform(label_encoder.classes_)))
     df = df.drop(64,axis='columns')
     df.columns= df.columns.astype(str)
-    alert_thold=20
-    detect_thold=40
+    # alert_thold=20
+    # detect_thold=40
+    alert_init=10
+    detect_init=20
     win_size=500
 elif option == "Ozone":
     df=pd.read_csv('data/Ozone.csv', header=None)
@@ -47,8 +49,10 @@ elif option == "Ozone":
     class_mapping = dict(zip(label_encoder.classes_, label_encoder.transform(label_encoder.classes_)))
     df = df.drop(72,axis='columns')
     df.columns= df.columns.astype(str)
-    alert_init=150
-    detect_init=170
+    # alert_init=150
+    # detect_init=170
+    alert_init=50
+    detect_init=70
     win_size=150
 elif option == "Simulation : Iris Soudain":
     df=pd.read_csv('data/iris_sudden.csv')
@@ -62,8 +66,8 @@ elif option == "Simulation : Iris Graduel":
     win_size=20
 elif option == "Simulation : Iris Récurrent":
     df=pd.read_csv('data/iris_recurrent.csv')
-    alert_init=20
-    detect_init=40
+    alert_init=5
+    detect_init=25
     win_size=20
 elif option == "Simulation : Iris Incrémental":
     df=pd.read_csv('data/iris_incremental.csv')
@@ -130,7 +134,7 @@ with btn1:
 pc1 = pca.fit_transform(df.iloc[:,:-1])
 
 #API initialization
-api=relio.RELIO_API(window_size, alert_thold, detect_thold, ot_metric, cost_function, stblty_thold, pd.DataFrame(pc1), 0)
+api=relio.RELIO_API(window_size, alert_thold, detect_thold, ot_metric, cost_function, stblty_thold, df, 0)
 
 
 with col1:
@@ -186,7 +190,7 @@ _ = js_detector.fit(X=fr_ref)
 ref_dist=[]
 for i in range(window_size):
     ref_dist.append(df.iloc[i])
-first_concept=relio.Concept(1, np.array(fr_ref))
+first_concept=relio.Concept(1, np.array(ref_dist))
 api.add_concept(first_concept)
 api.set_curr_concept(first_concept)
 current_window=[]
@@ -194,7 +198,8 @@ drifts = []
 ref_dist_X = fr_ref
 ref_dist_y = np.array(ref_dist)[:, -1].astype(int)
 all_classes=np.unique(np.array(df)[:,-1].astype(int))
-
+dist_emd=[]
+dist_js=[]
 with btn2:
     button=st.button(":arrow_forward: Lancer le test ", type="primary")
 if button:
@@ -207,38 +212,49 @@ if button:
        🔻 Qualité de la présentation de l'axe 1 =  **{pca.explained_variance_ratio_[0] * 100:.2f}%**
     """)
     st.divider()
-    st.write(f"""
-    ##### 	:chart_with_upwards_trend: Évolution de la distance de {metric_input} entre la distribution de référence et la fenêtre courante  : 
-    """)
-    distances=st.empty()
-    st.divider()
+
     st.write("""
             ### :scales: Comparaison des résultats de détection: 
     """)
     relio_col, fr_col1, fr_col2 = st.columns(3)
     with relio_col:
         st.markdown("""##### RELIO """)
+        st.write(f"""
+        ##### 	:chart_with_upwards_trend: Évolution de la distance de {metric_input} : 
+        """)
+        distances_relio=st.empty()
+        st.divider()
+
     with fr_col1:
         st.markdown("""##### Frouros - EMD """, help="Earth Mover's Distance : ou bien Wasserstein d'ordre 1")
+        st.write(f"""
+        ##### 	:chart_with_upwards_trend: Évolution de la distance de EMD : 
+        """)
+        distances_emd=st.empty()
+        st.divider()
+
     with fr_col2:
         st.markdown("""##### Frouros - JS """, help="Jensen-Shannon Distance : une distance basée sur la divergence de Kullback-Leibler")
-
+        st.write(f"""
+        ##### 	:chart_with_upwards_trend: Évolution de la distance de JS : 
+        """)
+        distances_js=st.empty()
+        st.divider()
     for i in range(window_size, len(df)+1):
         # Plot the data from the start to the current point
         chart.line_chart(pc1[:i])
         current_window.append(df.iloc[i-1])   
         if len(current_window) == window_size:
             fr_win=pc1[i-window_size:i]
-            win_X=fr_win
-            api.set_curr_win(np.array(win_X))
+            api.set_curr_win(np.array(current_window))
             api.monitorDrift()
 
             distances_data=pd.DataFrame(api.get_distances()[:i], columns=['Distance'])
             distances_data['Alerte']=api.get_alert_thold()
             distances_data['Détection']=api.get_detect_thold()
-            distances.line_chart(distances_data, color=["#FFAC1C","#338AFF", "#FF0D0D"])
-            
-            win_y=np.array(current_window)[:, -1].astype(int)            
+
+            win_X=np.array(current_window)[:, :-1]
+            win_y=np.array(current_window)[:, -1].astype(int)    
             if(api.get_action()==0):
                 drift_time = datetime.datetime.now().strftime("%H:%M:%S")
                 st.toast(f":red[Un drift est détecté à partir de la donnée d'indice  {i+1-window_size} à {drift_time}]", icon="⚠️")
@@ -260,9 +276,6 @@ if button:
                             st.toast(f':blue[Le type de drift est : Incrémental]', icon="📌")
                             st.info(f'Le type de drift est : Incrémental', icon="📌")
                 api.reset_retrain_model()
-
-                train_X=np.concatenate((ref_dist_X, win_X))
-                train_y=np.concatenate((ref_dist_y, win_y))
               
                 ref_dist_X=win_X
                 ref_dist_y=win_y
@@ -271,10 +284,11 @@ if button:
                 st.toast(f"Alerte : Un petit changement de distribution s'est produit  à partir de la donnée d'indice {i+1-window_size} à {alert_time}!", icon="❗")
                 with relio_col:
                     st.warning(f"Alerte : Un petit changement de distribution s'est produit  à partir de la donnée d'indice {i+1-window_size} à {alert_time}!", icon="❗")
-                train_X=np.concatenate((ref_dist_X, win_X))
-                train_y=np.concatenate((ref_dist_y, win_y))               
-                api.reset_partial_fit()            
-            
+                api.reset_partial_fit() 
+
+            with relio_col:
+                distances_relio.line_chart(distances_data, color=["#FFAC1C","#338AFF", "#FF0D0D"])
+
             emd_dist,callbacks_log=emd_detector.compare(X=fr_win)
             p_value = callbacks_log["permutation_test"]["p_value"]
             if(p_value <= alpha):
@@ -282,7 +296,9 @@ if button:
                     drift_time = datetime.datetime.now().strftime("%H:%M:%S")
                     st.error(f" Frouros : Un drift est détecté à partir de la donnée d'indice  {i+1-window_size} à {drift_time}", icon="⚠️")
                     _ = emd_detector.fit(X=fr_win)
-            
+            with fr_col1:
+                dist_emd.append(emd_dist)
+                distances_emd.line_chart(dist_emd,color=["#338AFF"])
             js_dist,callbacks_log=js_detector.compare(X=fr_win)
             p_value = callbacks_log["permutation_test"]["p_value"]
             if(p_value <= alpha):
@@ -290,7 +306,10 @@ if button:
                     drift_time = datetime.datetime.now().strftime("%H:%M:%S")
                     st.error(f" Frouros : Un drift est détecté à partir de la donnée d'indice  {i+1-window_size} à {drift_time}", icon="⚠️")
                     _ = js_detector.fit(X=fr_win)
-
+            
+            with fr_col2:
+                dist_js.append(js_dist)
+                distances_js.line_chart(dist_js,color=["#338AFF"])
             current_window=[]
             fr_win=np.array([])
 
