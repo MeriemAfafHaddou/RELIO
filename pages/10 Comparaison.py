@@ -71,18 +71,18 @@ elif option == "Simulation : Iris Récurrent":
     win_size=20
 elif option == "Simulation : Iris Incrémental":
     df=pd.read_csv('data/iris_incremental.csv')
-    alert_init=120
-    detect_init=150
+    alert_init=5
+    detect_init=25
     win_size=40
 elif option == "Synthétique : Insects Soudain":
     df=pd.read_csv('data/insects_sudden.csv', header=None)[9800:13800]
-    alert_init=60
-    detect_init=80
+    alert_init=50
+    detect_init=70
     win_size=200
 elif option == "Synthétique : Insects Incrémental":
     df=pd.read_csv('data/insects_incremental.csv', header=None)[32000:37000]
-    alert_init=140
-    detect_init=170
+    alert_init=20
+    detect_init=40
     win_size=200
 elif option == "Données générées":
     sea = SEA(seed=31)
@@ -127,8 +127,8 @@ with btn1:
             cost_function = relio.CostFunction.SEUCLIDEAN
         elif cost_input == 'Mahalanobis':    
             cost_function = relio.CostFunction.MAHALANOBIS
-        alert_thold=st.number_input('Introduire le Pourcentage d\'alerte', min_value=1, value=20, placeholder="Pourcentage d'alerte")
-        detect_thold=st.number_input('Introduire le Pourcentage de détection', min_value=1, value=50, placeholder="Pourcentage de détection")
+        alert_thold=st.number_input('Introduire le Pourcentage d\'alerte', min_value=1, value=alert_init, placeholder="Pourcentage d'alerte")
+        detect_thold=st.number_input('Introduire le Pourcentage de détection', min_value=1, value=detect_init, placeholder="Pourcentage de détection")
         stblty_thold=st.number_input('Introduire le seuil de stabilité', min_value=1, value=4, placeholder="Seuil de stabilité")
 
 pc1 = pca.fit_transform(df.iloc[:,:-1])
