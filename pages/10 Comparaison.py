@@ -100,8 +100,8 @@ elif option == "Données générées":
     df = pd.DataFrame(array_data)
     df['class'] = ints
     win_size=50
-    alert_init=30
-    detect_init=50
+    alert_init=5
+    detect_init=10
 
 #Modify parameters
 st.markdown("")
@@ -220,7 +220,7 @@ if button:
     with relio_col:
         st.markdown("""##### RELIO """)
         st.write(f"""
-        ##### 	:chart_with_upwards_trend: Évolution de la distance de {metric_input} : 
+        ##### 	:chart_with_upwards_trend: Évolution de la métrique de RELIO: 
         """)
         distances_relio=st.empty()
         st.divider()

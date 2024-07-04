@@ -62,8 +62,8 @@ with btn1:
             cost_function = relio.CostFunction.SEUCLIDEAN
         elif cost_input == 'Mahalanobis':    
             cost_function = relio.CostFunction.MAHALANOBIS
-        alert_thold=st.number_input('Introduire le pourcentage d\'alerte', min_value=1, value=10, placeholder="Pourcentage d'alerte", step=1)
-        detect_thold=st.number_input('Introduire le pourcentage de détection', min_value=1, value=25, placeholder="Pourcentage de détection",step=1)
+        alert_thold=st.number_input('Introduire le pourcentage d\'alerte', min_value=1, value=35, placeholder="Pourcentage d'alerte", step=1)
+        detect_thold=st.number_input('Introduire le pourcentage de détection', min_value=1, value=50, placeholder="Pourcentage de détection",step=1)
         stblty_thold=st.number_input('Introduire le seuil de stabilité', min_value=1, value=3, placeholder="Seuil de stabilité", step=1)
 
 api=relio.RELIO_API(window_size, alert_thold, detect_thold, ot_metric, cost_function, stblty_thold, df, 0)
@@ -232,7 +232,7 @@ if button:
 
             metric_data=pd.DataFrame()
             metric_data['Avec adaptation']=adapt_perform[:i]
-            metric_data['Impact du drift']=drift_impacts[:i]
+            metric_data['Sans adaptation']=drift_impacts[:i]
             metric_chart.line_chart(metric_data, color=["#338AFF", "#FF0D0D"])
 
 

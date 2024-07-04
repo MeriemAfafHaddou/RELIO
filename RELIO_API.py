@@ -247,8 +247,11 @@ class RELIO_API:
       self.__alert=False
       self.__curr_concept.increment_length()
       if self.__time==0:
-        index=random.randint(0, len(self.__curr_win)-1)
-        ref_distr[index]=np.mean(self.__curr_win, axis=0)
+        # index=random.randint(0, len(self.__curr_win)-1)
+        # ref_distr[index]=np.mean(self.__curr_win, axis=0)
+        index_ref=random.randint(0, len(self.__curr_win)-1)
+        index_cur=random.randint(0, len(self.__curr_win)-1)
+        ref_distr[index_ref]=self.__curr_win[index_cur]
         self.__curr_concept.set_ref_distr(ref_distr)
     elif result == 1 :
       self.__alert=True
@@ -284,11 +287,14 @@ class RELIO_API:
     #INCREMENTAL DRIFT
     if self.__alert and self.__retrain_model:
       if len(self.__ot_distances)>2:
-        if self.__ot_distances[-3]<self.__ot_distances[-2]:
+        if self.__ot_distances[-3]<self.__ot_distances[-2] and self.__ot_distances[-2]<self.__detect_thold:
+          print(self.__ot_distances)
+          print("1st case")
           self.__alert=False
           self.__concept_drifts[-1].set_drift_type(DriftType.INCREMENTAL)
           return DriftType.INCREMENTAL
       elif self.__ot_distances[-1]>self.__ot_distances[-2]:
+        print("2nd case")
         self.__alert=False
         self.__concept_drifts[-1].set_drift_type(DriftType.INCREMENTAL)
         return DriftType.INCREMENTAL

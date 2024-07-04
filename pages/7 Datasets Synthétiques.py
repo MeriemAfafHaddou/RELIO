@@ -265,7 +265,7 @@ if button:
 
             metric_data=pd.DataFrame()
             metric_data['Avec adaptation']=adapt_perform[:i]
-            metric_data['Impact du drift']=drift_impacts[:i]
+            metric_data['Sans adaptation']=drift_impacts[:i]
             metric_chart.line_chart(metric_data, color=["#338AFF", "#FF0D0D"])
 
 
