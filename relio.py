@@ -28,7 +28,7 @@ with cd_container:
 st.write("""
 ### ▶️ Documentation
 """)
-st.page_link("pages/documentation.py", label="Documentation", icon="📑")
+st.page_link("pages/1_documentation.py", label="Documentation", icon="📑")
 st.divider()
 st.write("""
 ### ▶️ Data generation
