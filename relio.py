@@ -33,8 +33,8 @@ st.divider()
 st.write("""
 ### ▶️ Data generation
 """)
-st.page_link("pages/data_generation.py",
-             label="Data generation", icon="🔻")
+st.page_link("pages/2_generated_data.py",
+             label="Generated Data", icon="🔻")
 
 st.divider()
 st.write("""
