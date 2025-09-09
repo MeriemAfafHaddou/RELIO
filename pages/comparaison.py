@@ -247,7 +247,7 @@ if button:
         if len(current_window) == window_size:
             fr_win=pc1[i-window_size:i]
             api.set_curr_win(np.array(current_window))
-            api.monitorDrift()
+            api.monitor_drift()
 
             distances_data=pd.DataFrame(api.get_distances()[:i], columns=['Distance'])
             distances_data['Alerte']=api.get_alert_thold()
@@ -260,7 +260,7 @@ if button:
                 st.toast(f":red[Un drift est détecté à partir de la donnée d'indice  {i+1-window_size} à {drift_time}]", icon="⚠️")
                 with relio_col:
                     st.error(f" RELIO : Un drift est détecté à partir de la donnée d'indice  {i+1-window_size} à {drift_time}", icon="⚠️")
-                drift_type=api.identifyType()
+                drift_type=api.identify_type()
                 with relio_col :
                     if(drift_type != None):
                         if drift_type == relio.DriftType.GRADUAL:
@@ -315,7 +315,7 @@ if button:
 
 
         
-        drift_type=api.identifyType()
+        drift_type=api.identify_type()
         with relio_col:
             if(drift_type != None):
                 if drift_type == relio.DriftType.GRADUAL:

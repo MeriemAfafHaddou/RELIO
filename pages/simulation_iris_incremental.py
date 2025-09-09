@@ -167,7 +167,7 @@ if button:
         current_window.append(df.iloc[i-1])
         if len(current_window) == window_size:
             api.set_curr_win(np.array(current_window))
-            api.monitorDrift()
+            api.monitor_drift()
             win_X=np.array(current_window)[:, :-1]
             win_y=np.array(current_window)[:, -1].astype(int)
 
@@ -185,7 +185,7 @@ if button:
                 drift_time = datetime.datetime.now().strftime("%H:%M:%S")
                 st.toast(f":red[Un drift est détecté à partir de la donnée d'indice  {i+1-window_size} à {drift_time}]", icon="⚠️")
                 st.error(f"Un drift est détecté à partir de la donnée d'indice  {i+1-window_size} à {drift_time}", icon="⚠️")
-                drift_type=api.identifyType()
+                drift_type=api.identify_type()
                 if(drift_type != None):
                     if drift_type == relio.DriftType.GRADUAL:
                         st.toast(f':blue[Le type de drift est : Graduel]', icon="📌")
@@ -237,7 +237,7 @@ if button:
 
 
             current_window=[]
-        drift_type=api.identifyType()
+        drift_type=api.identify_type()
         if(drift_type != None):
             if drift_type == relio.DriftType.GRADUAL:
                 st.toast(f':blue[Le type de drift est : Graduel]', icon="📌")

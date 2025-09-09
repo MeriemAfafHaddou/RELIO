@@ -134,13 +134,13 @@ if button:
     for current_window in df[1:]:
         i+=1
         api.set_curr_win(np.array(current_window))
-        api.monitorDrift()
+        api.monitor_drift()
 
         if(api.get_action()==0):
             drift_time = datetime.datetime.now().strftime("%H:%M:%S")
             st.toast(f":red[Un drift est détecté à la fenetre d'indice{i} à {drift_time}]", icon="⚠️")
             st.error(f"Un drift est détecté à la fenetre d'indice{i} à {drift_time}", icon="⚠️")
-            drift_type=api.identifyType()
+            drift_type=api.identify_type()
             if(drift_type != None):
                 if drift_type == relio.DriftType.GRADUAL:
                     st.toast(f':blue[Le type de drift est : Graduel]', icon="📌")
@@ -166,7 +166,7 @@ if button:
         distances_data['Alerte']=api.get_alert_thold()
         distances_data['Détection']=api.get_detect_thold()
         distances.line_chart(distances_data, color=["#FFAC1C","#338AFF", "#FF0D0D"])
-        drift_type=api.identifyType()
+        drift_type=api.identify_type()
         if(drift_type != None):
             if drift_type == relio.DriftType.GRADUAL:
                 st.toast(f':blue[Le type de drift est : Graduel]', icon="📌")
