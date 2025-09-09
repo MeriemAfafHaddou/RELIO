@@ -40,7 +40,7 @@ st.divider()
 st.write("""
 ### ▶️ Simulation of different types of drifts
 """)
-st.page_link("pages/simulation_iris_gradual.py",
+st.page_link("pages/3_simulation_iris_gradual.py",
              label=" Simulation : Iris Gradual", icon="🔻")
 st.page_link("pages/simulation_iris_incremental.py",
              label=" Simulation : Iris Incremental", icon="🔻")
