@@ -42,7 +42,7 @@ array_data = np.vstack(arrays)
 # Create the DataFrame
 df = pd.DataFrame(array_data)
 df['class'] = ints
-df.to_csv('generated_data.csv', index=False)
+df.to_csv('./data/generated_data.csv', index=False)
 WIN_SIZE = 50
 all_classes = np.array(df)[:, -1]
 col1, col2 = st.columns(2)
