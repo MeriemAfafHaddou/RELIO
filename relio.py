@@ -42,7 +42,7 @@ st.write("""
 """)
 st.page_link("pages/3_simulation_iris_gradual.py",
              label=" Simulation : Iris Gradual", icon="🔻")
-st.page_link("pages/simulation_iris_incremental.py",
+st.page_link("pages/4_simulation_iris_incremental.py",
              label=" Simulation : Iris Incremental", icon="🔻")
 st.page_link("pages/simulation_iris_sudden.py",
              label=" Simulation : Iris Sudden", icon="🔻")

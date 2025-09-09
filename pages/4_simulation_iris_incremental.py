@@ -14,75 +14,57 @@ import relio_api as relio
 
 st.logo("images/logo.png")
 st.set_page_config(
-    page_title="Simulation - Gradual Drift",
+    page_title="Simulation - Incremental Drift",
     page_icon="images/icon.png",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 pca = PCA(n_components=1)
 
-
 st.write("""
-# Simulation of a gradual drift
+# Simulation of an incremental drift
 """)
 
-with st.expander(":blue[:question: What is a gradual drift?]", expanded=False):
-    st.write(
-        """
-        It refers to a progressive change where two sources, Si and Sj, are
-        active simultaneously for some time. Over time, the probability of an
-        instance arriving from source Si decreases, while the probability of
-        an instance arriving from source Sj increases, until Sj completely
-        replaces Si, as illustrated in the figure:
-        """
-    )
+with st.expander(":blue[:question: What is an incremental drift?]",
+                 expanded=False):
+    st.write("""
+       Incremental concept drift is a special case of gradual drift, where
+       with more than two sources, the difference between them is very
+       small. This means the drift is only noticed over a longer period
+       of time, as illustrated in the figure:
+    """)
 
-    st.image("images/graduel.png")
+    st.image("images/incremental.png")
 
 st.write("""### Simulation :""")
-df = pd.read_csv("data/iris_graduel.csv")
+df = pd.read_csv("data/iris_incremental.csv")
 col1, col2 = st.columns(2)
 st.markdown("")
 btn1, btn2 = st.columns(2)
-
 with btn1:
     with st.popover(":gear: Modify parameters"):
         st.write("""
-        :gear: Modify simulation parameters
+            :gear: Modify simulation parameters
         """)
-
         model_type = st.selectbox(
             "Choose the model type",
-            [
-                "Supervised - Stochastic Gradient Descent",
-                "Unsupervised - KMeans",
-            ],
+            ["Supervised - Stochastic Gradient Descent",
+             "Unsupervised - KMeans"],
         )
-
         window_size = st.number_input(
-            "Enter the window size",
-            min_value=1,
-            value=20,
-            placeholder="Window size",
+            "Enter the window size", min_value=1, value=40,
+            placeholder="Window size"
         )
-
         metric_input = st.selectbox(
             "Choose the detection metric",
-            [
-                "Wasserstein order 1",
-                "Wasserstein order 2",
-                "Regularized Wasserstein",
-            ],
+            ["Wasserstein order 1",
+             "Wasserstein order 2",
+             "Regularized Wasserstein"],
             index=1,
         )
-
         cost_input = st.selectbox(
             "Choose the cost function",
-            [
-                "Euclidean",
-                "Standardized Euclidean",
-                "Mahalanobis",
-            ],
+            ["Euclidean", "Standardized Euclidean", "Mahalanobis"],
             index=1,
         )
 
@@ -103,19 +85,17 @@ with btn1:
         alert_thold = st.number_input(
             "Enter the alert percentage",
             min_value=1,
-            value=20,
+            value=35,
             placeholder="Alert percentage",
             step=1,
         )
-
         detect_thold = st.number_input(
             "Enter the detection percentage",
             min_value=1,
-            value=40,
+            value=50,
             placeholder="Detection percentage",
             step=1,
         )
-
         stblty_thold = st.number_input(
             "Enter the stability threshold",
             min_value=1,
@@ -134,7 +114,6 @@ api = relio.RelioApi(
     df,
     0,
 )
-
 ref_dist = []
 for i in range(window_size):
     ref_dist.append(df.iloc[i])
@@ -144,7 +123,6 @@ api.set_curr_concept(first_concept)
 current_window = []
 drift_impacts = []
 adapt_perform = []
-CURRENT_MODEL = 0
 ref_dist_X = np.array(ref_dist)[:, :-1]
 ref_dist_y = np.array(ref_dist)[:, -1].astype(int)
 all_classes = np.unique(np.array(df)[:, -1].astype(int))
@@ -255,13 +233,10 @@ elif model_type == "Unsupervised - KMeans":
     METRIC_NAME = "Silhouette Score"
 if button:
     st.toast("Initializing the API...", icon="⏳")
-
     st.write("""
     ##### :bar_chart: Evolution of the data distribution:
     """)
-
     chart = st.empty()
-
     st.write(
         f"""
         🔻 Quality of representation on axis 1 =
@@ -275,7 +250,6 @@ if button:
         distance between the reference distribution and the current window:
         """
     )
-
     distances = st.empty()
     st.divider()
 
@@ -288,11 +262,8 @@ if button:
     metric_chart = st.empty()
 
     st.divider()
-
     st.write("""
-    ### :clock1: History of detected drifts:
-    """)
-
+    ### :clock1: History of detected drifts:""")
     for i in range(window_size, len(df) + 1):
         # Plot the data from the start to the current point
         chart.line_chart(pc1[:i])
@@ -310,6 +281,9 @@ if button:
                 y_pred_drift = drifted_model.predict(win_X)
                 drifted_metric = accuracy_score(y_pred_drift, win_y)
 
+            train_X = np.concatenate((ref_dist_X, win_X))
+            train_y = np.concatenate((ref_dist_y, win_y))
+
             if api.get_action() == 0:
                 drift_time = datetime.datetime.now().strftime("%H:%M:%S")
                 st.toast(
@@ -325,12 +299,10 @@ if button:
                 drift_type = api.identify_type()
                 if drift_type is not None:
                     if drift_type == relio.DriftType.GRADUAL:
-                        st.toast(
-                            ":blue[The drift type is: Gradual]", icon="📌")
+                        st.toast(":blue[The drift type is: Gradual]", icon="📌")
                         st.info("The drift type is: Gradual", icon="📌")
                     elif drift_type == relio.DriftType.SUDDEN:
-                        st.toast(
-                            ":blue[The drift type is: Sudden]", icon="📌")
+                        st.toast(":blue[The drift type is: Sudden]", icon="📌")
                         st.info("The drift type is: Sudden", icon="📌")
                     elif drift_type == relio.DriftType.RECURRENT:
                         st.toast(
@@ -338,34 +310,13 @@ if button:
                         st.info("The drift type is: Recurrent", icon="📌")
                     elif drift_type == relio.DriftType.INCREMENTAL:
                         st.toast(
-                            ":blue[The drift type is: Incremental]",
-                            icon="📌"
-                        )
+                            ":blue[The drift type is: Incremental]", icon="📌")
                         st.info("The drift type is: Incremental", icon="📌")
                 api.reset_retrain_model()
-                train_X = np.concatenate((ref_dist_X, win_X))
-                train_y = np.concatenate((ref_dist_y, win_y))
                 if model_type == "Supervised - Stochastic Gradient Descent":
                     model.fit(train_X, train_y)
                 elif model_type == "Unsupervised - KMeans":
-                    if CURRENT_MODEL == 0:
-                        silhouette_avg = []
-                        K = range(2, 11)
-                        for k in K:
-                            kmeans = MiniBatchKMeans(
-                                n_clusters=k, random_state=42)
-                            cluster_labels = kmeans.fit_predict(ref_dist_X)
-                            silhouette_avg.append(
-                                silhouette_score(ref_dist_X, cluster_labels)
-                            )
-                        n = np.argmax(silhouette_avg) + 2
-                        new_model = MiniBatchKMeans(
-                            n_clusters=n, random_state=42)
-                        labels = new_model.fit(train_X)
-                        CURRENT_MODEL = 1
-                    else:
-                        labels = model.fit(win_X)
-                        CURRENT_MODEL = 0
+                    labels = model.fit(train_X)
                 ref_dist_X = win_X
                 ref_dist_y = win_y
 
@@ -382,11 +333,11 @@ if button:
                     icon="❗",
                 )
                 if model_type == "Supervised - Stochastic Gradient Descent":
-                    model.partial_fit(win_X, win_y)
-
+                    model.partial_fit(win_X, win_y, all_classes)
                 elif model_type == "Unsupervised - KMeans":
-                    model.partial_fit(train_X)
+                    model.partial_fit(win_X)
                 api.reset_partial_fit()
+
             distances_data = pd.DataFrame(
                 api.get_distances()[:i], columns=["distance"])
             distances_data["alert"] = api.get_alert_thold()
@@ -396,10 +347,7 @@ if button:
             )
 
             if model_type == "Unsupervised - KMeans":
-                if CURRENT_MODEL == 0:
-                    labels = model.predict(win_X)
-                else:
-                    labels = new_model.predict(win_X)
+                labels = model.predict(win_X)
                 labels_drift = drifted_model.predict(win_X)
                 metric = silhouette_score(win_X, labels)
                 drifted_metric = silhouette_score(win_X, labels_drift)
@@ -409,27 +357,22 @@ if button:
             metric_data = pd.DataFrame()
             metric_data["with adaptation"] = adapt_perform[:i]
             metric_data["without adaptation"] = drift_impacts[:i]
-            metric_chart.line_chart(
-                metric_data, color=["#338AFF", "#FF0D0D"])
+            metric_chart.line_chart(metric_data, color=["#338AFF", "#FF0D0D"])
 
             current_window = []
         drift_type = api.identify_type()
         if drift_type is not None:
             if drift_type == relio.DriftType.GRADUAL:
-                st.toast(
-                    ":blue[The drift type is: Gradual]", icon="📌")
+                st.toast(":blue[The drift type is: Gradual]", icon="📌")
                 st.info("The drift type is: Gradual", icon="📌")
             elif drift_type == relio.DriftType.SUDDEN:
-                st.toast(
-                    ":blue[The drift type is: Sudden]", icon="📌")
+                st.toast(":blue[The drift type is: Sudden]", icon="📌")
                 st.info("The drift type is: Sudden", icon="📌")
             elif drift_type == relio.DriftType.RECURRENT:
-                st.toast(
-                    ":blue[The drift type is: Recurrent]", icon="📌")
+                st.toast(":blue[The drift type is: Recurrent]", icon="📌")
                 st.info("The drift type is: Recurrent", icon="📌")
             elif drift_type == relio.DriftType.INCREMENTAL:
-                st.toast(
-                    ":blue[The drift type is: Incremental]", icon="📌")
+                st.toast(":blue[The drift type is: Incremental]", icon="📌")
                 st.info("The drift type is: Incremental", icon="📌")
         # Pause for a moment
-        time.sleep(0.1)
+        time.sleep(0.01)
