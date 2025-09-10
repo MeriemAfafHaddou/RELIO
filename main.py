@@ -53,7 +53,7 @@ st.divider()
 st.write("""
 ### ▶️ Tests on datasets
 """)
-st.page_link("pages/synthetic_data.py",
+st.page_link("pages/7_synthetic_data.py",
              label=" Tests : Synthetic Datasets", icon="🔻")
 st.page_link("pages/real_data.py",
              label=" Tests : Real Datasets", icon="🔻")
