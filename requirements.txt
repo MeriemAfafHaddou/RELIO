@@ -1,0 +1,6 @@
+numpy
+pandas
+POT
+streamlit
+frouros
+scikit-learn
