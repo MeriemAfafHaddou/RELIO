@@ -100,7 +100,7 @@ class RelioApi:
         cost_function,
         stability_threshold,
         df: pd.DataFrame,
-        time,
+        time=0,
     ):
         self.__win_size = 0  # Window size in number of samples
         self.__curr_win = []  # Stores the current window
@@ -119,16 +119,14 @@ class RelioApi:
         self.__reappearing_count = 0  # Count reappearing distributions
         self.__concept_drifts = []  # Stores concept drifts
         self.__concepts = []  # Stores detected concepts
-        self.__time = 0  # 0 = logical time, 1 = physical time
+        self.__time = time  # 0 = logical time, 1 = physical time
 
-        if time == 0:
-            self.__time = 0
+        if self.__time == 0:
             self.__win_size = window_size
             estimated_mean = self.estimate_thold(df)
             self.__alert_thold = estimated_mean * (1 + alert_thold / 100)
             self.__detect_thold = estimated_mean * (1 + detect_thold / 100)
-        elif time == 1:
-            self.__time = 1
+        elif self.__time == 1:
             self.__alert_thold = alert_thold
             self.__detect_thold = detect_thold
         self.__stblty_thold = stability_threshold
