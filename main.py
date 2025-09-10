@@ -57,7 +57,7 @@ st.page_link("pages/7_synthetic_data.py",
              label=" Tests : Synthetic Datasets", icon="🔻")
 st.page_link("pages/8_real_data.py",
              label=" Tests : Real Datasets", icon="🔻")
-st.page_link("pages/app_social_modia.py",
+st.page_link("pages/9_application_on_social_modia.py",
              label=" Application : Social Media", icon="🔻")
 
 st.divider()
