@@ -46,7 +46,7 @@ st.page_link("pages/4_simulation_iris_incremental.py",
              label=" Simulation : Iris Incremental", icon="🔻")
 st.page_link("pages/5_simulation_iris_sudden.py",
              label=" Simulation : Iris Sudden", icon="🔻")
-st.page_link("pages/simulation_iris_recurrent.py",
+st.page_link("pages/6_simulation_iris_recurrent.py",
              label=" Simulation : Iris Recurrent", icon="🔻")
 st.divider()
 
