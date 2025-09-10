@@ -64,4 +64,4 @@ st.divider()
 st.write("""
 ### ▶️ Comparison with other solutions
 """)
-st.page_link("pages/comparaison.py", label=" Comparaison", icon="🔻")
+st.page_link("pages/10_comparaison.py", label=" Comparaison", icon="🔻")
