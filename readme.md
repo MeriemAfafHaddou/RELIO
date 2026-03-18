@@ -44,6 +44,6 @@ streamlit run main.py
 - Fast and reliable detection of drift before model failure
 - Effective in multidimensional, non-stationary environments
 
-## 📄 Research Paper
+## 📄 Research Manuscript
 This repository accompanies the research work: "Concept Drift Detection using Optimal Transport".
 Draft paper available here: `paper/relio_concept_drift_paper_draft.pdf`

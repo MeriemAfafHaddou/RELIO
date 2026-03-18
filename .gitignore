@@ -1,13 +1,6 @@
-# Virtual environment
 .venv/
-
-# Streamlit config and logs
 .streamlit/
-
-# Apache / PyApache related files
 pyapache/
-
-# Python cache and compiled files
 __pycache__/
 *.py[cod]
 *$py.class
