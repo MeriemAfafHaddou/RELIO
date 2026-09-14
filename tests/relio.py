@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 import pandas as pd
 
-import relio_api as relio
+import relio
 
 
 class TestRelio(unittest.TestCase):
@@ -76,7 +76,7 @@ class TestRelio(unittest.TestCase):
 
     def test_monitor_drift(self):
         df = pd.read_csv("data/iris_sudden.csv")
-        relio_api = relio.RelioApi(
+        relio = relio.RelioApi(
             50,
             20,
             40,
@@ -88,17 +88,17 @@ class TestRelio(unittest.TestCase):
         # no drift
         df = np.array(df)[:, :-1]
         concept = relio.Concept(1, df[:50])
-        relio_api.set_curr_concept(concept)
-        relio_api.set_curr_win(df[50:100])
-        relio_api.monitor_drift()
-        self.assertFalse(relio_api.get_retrain_model())
-        self.assertFalse(relio_api.get_partial_fit())
+        relio.set_curr_concept(concept)
+        relio.set_curr_win(df[50:100])
+        relio.monitor_drift()
+        self.assertFalse(relio.get_retrain_model())
+        self.assertFalse(relio.get_partial_fit())
 
-        relio_api.set_curr_win(df[300:350])
+        relio.set_curr_win(df[300:350])
 
-        relio_api.monitor_drift()
-        self.assertFalse(relio_api.get_partial_fit())
-        self.assertTrue(relio_api.get_retrain_model())
+        relio.monitor_drift()
+        self.assertFalse(relio.get_partial_fit())
+        self.assertTrue(relio.get_retrain_model())
 
 
 if __name__ == "__main__":

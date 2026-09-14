@@ -1,6 +1,6 @@
 import unittest
 
-import relio_api as relio
+import relio
 
 
 class ConceptDriftTest(unittest.TestCase):

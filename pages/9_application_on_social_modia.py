@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
-import relio_api as relio
+import relio
 
 st.set_page_config(
     page_title="Application to social media",

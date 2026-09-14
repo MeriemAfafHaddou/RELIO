@@ -10,7 +10,7 @@ from sklearn.metrics import accuracy_score, silhouette_score
 from sklearn.model_selection import GridSearchCV
 from sklearn.preprocessing import LabelEncoder
 
-import relio_api as relio
+import relio
 
 st.logo("images/logo.png")
 st.set_page_config(

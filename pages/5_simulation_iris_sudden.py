@@ -10,7 +10,7 @@ from sklearn.linear_model import SGDClassifier
 from sklearn.metrics import accuracy_score, silhouette_score
 from sklearn.model_selection import GridSearchCV
 
-import relio_api as relio
+import relio
 
 st.logo("images/logo.png")
 st.set_page_config(

@@ -9,7 +9,7 @@ from frouros.detectors.data_drift import EMD, JS
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import LabelEncoder
 
-import relio_api as relio
+import relio
 
 st.logo("images/logo.png")
 st.set_page_config(
