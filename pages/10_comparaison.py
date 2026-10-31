@@ -71,7 +71,7 @@ elif option == "Simulation : Iris Sudden":
     DETECT_INIT = 40
     WIN_SIZE = 50
 elif option == "Simulation : Iris Gradual":
-    df = pd.read_csv("data/iris_graduel.csv")
+    df = pd.read_csv("data/iris_gradual.csv")
     ALERT_INIT = 20
     DETECT_INIT = 40
     WIN_SIZE = 20

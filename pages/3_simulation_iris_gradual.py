@@ -40,7 +40,7 @@ with st.expander(":blue[:question: What is a gradual drift?]", expanded=False):
     st.image("images/graduel.png")
 
 st.write("""### Simulation :""")
-df = pd.read_csv("data/iris_graduel.csv")
+df = pd.read_csv("data/iris_gradual.csv")
 col1, col2 = st.columns(2)
 st.markdown("")
 btn1, btn2 = st.columns(2)
