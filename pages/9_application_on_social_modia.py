@@ -239,7 +239,7 @@ with btn1:
         elif cost_input == "Mahalanobis":
             cost_function = relio.CostFunction.MAHALANOBIS
 
-        alert_thold = st.number_input(
+        warning_threshold = st.number_input(
             "Enter the alert threshold (%)",
             value=ALERT_INIT,
             placeholder="Alert threshold (%)",
@@ -257,7 +257,7 @@ with btn1:
         )
 
 
-api = relio.RelioApi(24, alert_thold, detect_thold, ot_metric, cost_function,
+api = relio.Relio(24, warning_threshold, detect_thold, ot_metric, cost_function,
                      stblty_thold, df, 1,)
 ref_dist = df[0]
 first_concept = relio.Concept(1, np.array(ref_dist))
@@ -294,7 +294,7 @@ with col1:
 with col2:
     st.markdown(
         f"""
-        :small_red_triangle_down: Alert percentage : ***{alert_thold}%***
+        :small_red_triangle_down: Alert percentage : ***{warning_threshold}%***
         """,
         help="This is the :blue-background[distribution shift percentage] "
         "above which an alert is triggered. For example, if the "
@@ -341,7 +341,7 @@ if button:
     for current_window in df[1:]:
         i += 1
         api.set_curr_win(np.array(current_window))
-        api.monitor_drift()
+        api.detect_drift()
 
         if api.get_action() == 0:
             drift_time = datetime.datetime.now().strftime("%H:%M:%S")
@@ -355,7 +355,7 @@ if button:
                 f"{i + 1 - window_size} at {drift_time}",
                 icon="⚠️",
             )
-            drift_type = api.identify_type()
+            drift_type = api.identify_drift_type()
             if drift_type is not None:
                 if drift_type == relio.DriftType.GRADUAL:
                     st.toast(":blue[The drift type is: Gradual]",
@@ -372,7 +372,7 @@ if button:
                     st.toast(
                         ":blue[The drift type is: Incremental]", icon="📌")
                     st.info("The drift type is: Incremental", icon="📌")
-            api.reset_retrain_model()
+            api.reset_adapt_model()
 
             ref_dist = current_window
         elif api.get_action() == 1:
@@ -387,15 +387,15 @@ if button:
                 f"data with index {i + 1 - window_size} at {alert_time}!",
                 icon="❗",
             )
-            api.reset_partial_fit()
+            api.reset_adjust_model()
         distances_data = pd.DataFrame(
-            api.get_distances()[:i], columns=["distance"])
-        distances_data["alert"] = api.get_alert_thold()
+            api.get_distance_history()[:i], columns=["distance"])
+        distances_data["alert"] = api.get_warning_thold()
         distances_data["detection"] = api.get_detect_thold()
         distances.line_chart(
             distances_data, color=["#338AFF", "#FFAC1C", "#FF0D0D"]
         )
-        drift_type = api.identify_type()
+        drift_type = api.identify_drift_type()
         if drift_type is not None:
             if drift_type == relio.DriftType.GRADUAL:
                 st.toast(":blue[The drift type is: Gradual]", icon="📌")

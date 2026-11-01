@@ -103,7 +103,7 @@ with btn1:
         elif cost_input == "Mahalanobis":
             cost_function = relio.CostFunction.MAHALANOBIS
 
-        alert_thold = st.number_input(
+        warning_threshold = st.number_input(
             "Enter the alert percentage",
             min_value=1,
             value=5,
@@ -125,7 +125,7 @@ with btn1:
         )
 
 # API initialization
-api = relio.RelioApi(window_size, alert_thold, detect_thold,
+api = relio.Relio(window_size, warning_threshold, detect_thold,
                      ot_metric, cost_function, stblty_thold, df, 0)
 
 ref_dist = []
@@ -178,7 +178,7 @@ with col1:
 with col2:
     st.markdown(
         f"""
-        :small_red_triangle_down: Alert percentage : ***{alert_thold}%***
+        :small_red_triangle_down: Alert percentage : ***{warning_threshold}%***
         """,
         help="This is the :blue-background[distribution shift percentage] "
              "above which an alert is triggered. For example, if the "
@@ -271,7 +271,7 @@ if button:
         current_window.append(df.iloc[i-1])
         if len(current_window) == window_size:
             api.set_curr_win(np.array(current_window))
-            api.monitor_drift()
+            api.detect_drift()
 
             win_X = np.array(current_window)[:, :-1]
             win_y = np.array(current_window)[:, -1].astype(int)
@@ -291,7 +291,7 @@ if button:
                 st.error(
                     f"""A drift is detected in data with index {
                         i + 1 - window_size} at {drift_time}""", icon="⚠️")
-                drift_type = api.identify_type()
+                drift_type = api.identify_drift_type()
                 if drift_type is not None:
                     if drift_type == relio.DriftType.GRADUAL:
                         st.toast(
@@ -310,7 +310,7 @@ if button:
                             ':blue[The drift type is: Incremental]',
                             icon="📌")
                         st.info('The drift type is: Incremental', icon="📌")
-                api.reset_retrain_model()
+                api.reset_adapt_model()
 
                 train_X = np.concatenate((ref_dist_X, win_X))
                 train_y = np.concatenate((ref_dist_y, win_y))
@@ -347,11 +347,11 @@ if button:
                 elif model_type == "Unsupervised - KMeans":
                     model.partial_fit(train_X)
 
-                api.reset_partial_fit()
+                api.reset_adjust_model()
 
             distances_data = pd.DataFrame(
-                api.get_distances()[:i], columns=['distance'])
-            distances_data['alert'] = api.get_alert_thold()
+                api.get_distance_history()[:i], columns=['distance'])
+            distances_data['alert'] = api.get_warning_thold()
             distances_data['detection'] = api.get_detect_thold()
             distances.line_chart(distances_data, color=[
                                  "#338AFF", "#FFAC1C", "#FF0D0D"])
@@ -371,7 +371,7 @@ if button:
                 metric_data, color=["#338AFF", "#FF0D0D"])
 
             current_window = []
-        drift_type = api.identify_type()
+        drift_type = api.identify_drift_type()
         if drift_type is not None:
             if drift_type == relio.DriftType.GRADUAL:
                 st.toast(':blue[The drift type is: Gradual]', icon="📌")

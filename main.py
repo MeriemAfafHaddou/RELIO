@@ -1,6 +1,5 @@
 import streamlit as st
 
-
 st.logo("images/logo.png")
 st.set_page_config(
     page_title="Relio - Accueil",
