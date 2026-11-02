@@ -9,7 +9,7 @@ import relio
 class TestRelio(unittest.TestCase):
     def test_reset_retrain(self):
         df = pd.read_csv("data/iris_sudden.csv")
-        api = relio.RelioApi(
+        api = relio.Relio(
             30,
             10,
             20,
@@ -18,12 +18,12 @@ class TestRelio(unittest.TestCase):
             4,
             df,
         )
-        api.reset_retrain_model()
+        api.reset_adapt_model()
         self.assertEqual(api.get_retrain_model(), False)
 
     def test_add_concept(self):
         df = pd.read_csv("data/iris_sudden.csv")
-        api = relio.RelioApi(
+        api = relio.Relio(
             30,
             10,
             20,
@@ -41,7 +41,7 @@ class TestRelio(unittest.TestCase):
 
     def test_compare_dist(self):
         df = pd.read_csv("data/iris_sudden.csv")
-        api = relio.RelioApi(
+        api = relio.Relio(
             30,
             20,
             40,
@@ -60,7 +60,7 @@ class TestRelio(unittest.TestCase):
 
     def test_is_gradual(self):
         df = pd.read_csv("data/iris_sudden.csv")
-        api = relio.RelioApi(
+        api = relio.Relio(
             30,
             20,
             40,
@@ -76,7 +76,7 @@ class TestRelio(unittest.TestCase):
 
     def test_monitor_drift(self):
         df = pd.read_csv("data/iris_sudden.csv")
-        relio = relio.RelioApi(
+        relio = relio.Relio(
             50,
             20,
             40,
