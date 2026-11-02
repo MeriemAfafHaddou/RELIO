@@ -3,102 +3,105 @@ import unittest
 import numpy as np
 import pandas as pd
 
-import relio
+from relio import (
+    Concept,
+    CostFunction,
+    DriftStatus,
+    OTMetric,
+    Relio,
+)
 
 
 class TestRelio(unittest.TestCase):
-    def test_reset_retrain(self):
-        df = pd.read_csv("data/iris_sudden.csv")
-        api = relio.Relio(
-            30,
-            10,
-            20,
-            relio.OTMetric.WASSERSTEIN2,
-            relio.CostFunction.SEUCLIDEAN,
-            4,
-            df,
-        )
-        api.reset_adapt_model()
-        self.assertEqual(api.get_retrain_model(), False)
 
-    def test_add_concept(self):
-        df = pd.read_csv("data/iris_sudden.csv")
-        api = relio.Relio(
-            30,
-            10,
-            20,
-            relio.OTMetric.WASSERSTEIN2,
-            relio.CostFunction.SEUCLIDEAN,
-            4,
-            df,
+    def setUp(self):
+        # Two well-separated concepts: rows 0-299 ~ N(0, 1), rows 300-599 ~ N(6, 1).
+        rng = np.random.default_rng(0)
+        self.features = np.vstack(
+            [rng.normal(0, 1, (300, 4)), rng.normal(6, 1, (300, 4))]
         )
-        df = np.array(df)[:, :-1]
-        concept = relio.Concept(1, df[:30])
-        api.add_concept(concept)
-        api.add_concept(concept)
-        self.assertEqual(len(api.get_concepts()), 2)
-        self.assertEqual(api.get_concepts(), [concept, concept])
+        self.df = pd.DataFrame(self.features[:300])
 
-    def test_compare_dist(self):
-        df = pd.read_csv("data/iris_sudden.csv")
-        api = relio.Relio(
-            30,
-            20,
-            40,
-            relio.OTMetric.WASSERSTEIN2,
-            relio.CostFunction.SEUCLIDEAN,
-            4,
-            df,
+    def create_detector(
+        self,
+        window_size=30,
+        warning_threshold=20,
+        detection_threshold=40,
+    ):
+        return Relio(
+            window_size=window_size,
+            warning_threshold=warning_threshold,
+            detection_threshold=detection_threshold,
+            ot_metric=OTMetric.WASSERSTEIN2,
+            cost_function=CostFunction.SEUCLIDEAN,
+            stability_threshold=4,
+            df=self.df,
         )
-        df = np.array(df)[:, :-1]
-        result, dist = api.compare_distributions(df[:50], df[50:100])
-        self.assertLess(dist, api.get_alert_thold())
-        self.assertEqual(result, 0)
-        result, dist = api.compare_distributions(df[150:200], df[200:250])
-        self.assertGreater(dist, api.get_detect_thold())
-        self.assertEqual(result, 2)
 
-    def test_is_gradual(self):
-        df = pd.read_csv("data/iris_sudden.csv")
-        api = relio.Relio(
-            30,
-            20,
-            40,
-            relio.OTMetric.WASSERSTEIN2,
-            relio.CostFunction.SEUCLIDEAN,
-            4,
-            df,
-        )
-        lengths_true = [5, 1, 5, 2, 2, 4, 1, 6]
-        self.assertTrue(api.is_gradual(lengths_true))
-        lengths_false = [5, 1, 3, 2, 4, 2, 7]
-        self.assertFalse(api.is_gradual(lengths_false))
+    def test_compare_distributions(self):
+        relio = self.create_detector()
 
-    def test_monitor_drift(self):
-        df = pd.read_csv("data/iris_sudden.csv")
-        relio = relio.Relio(
-            50,
-            20,
-            40,
-            relio.OTMetric.WASSERSTEIN2,
-            relio.CostFunction.SEUCLIDEAN,
-            4,
-            df,
+        # Same concept: no drift.
+        result, distance = relio.compare_distributions(
+            self.features[:50],
+            self.features[50:100],
         )
-        # no drift
-        df = np.array(df)[:, :-1]
-        concept = relio.Concept(1, df[:50])
+        self.assertLess(distance, relio.get_warning_thold())
+        self.assertEqual(result, DriftStatus.NO_DRIFT)
+
+        # Different concepts: drift.
+        result, distance = relio.compare_distributions(
+            self.features[250:300],
+            self.features[300:350],
+        )
+        self.assertGreater(distance, relio.get_detect_thold())
+        self.assertEqual(result, DriftStatus.DRIFT)
+
+    def test_detect_gradual_drift(self):
+        # is_drift_gradual() reads the concepts that started inside the
+        # transition, so we build them directly (private attributes).
+        def relio_with_concept_lengths(lengths):
+            relio = self.create_detector()
+            for start_time, length in enumerate(lengths, start=1):
+                concept = Concept(start_time, None)
+                for _ in range(length - 1):
+                    concept.increment_length()
+                relio.add_concept(concept)
+            relio._Relio__transition_start = 1
+            relio._Relio__transition_end = len(lengths)
+            return relio
+
+        # Source 1 shrinks (5, 5, 2, 1) while source 2 grows (1, 2, 4, 6).
+        self.assertTrue(
+            relio_with_concept_lengths([5, 1, 5, 2, 2, 4, 1, 6]).is_drift_gradual()
+        )
+        self.assertFalse(
+            relio_with_concept_lengths([5, 1, 3, 2, 4, 2, 7]).is_drift_gradual()
+        )
+
+    def test_detect_drift(self):
+        relio = self.create_detector(window_size=50)
+
+        # .copy(): detect_drift updates the reference array in place.
+        concept = Concept(1, self.features[:50].copy())
+        relio.add_concept(concept)
         relio.set_curr_concept(concept)
-        relio.set_curr_win(df[50:100])
-        relio.monitor_drift()
-        self.assertFalse(relio.get_retrain_model())
-        self.assertFalse(relio.get_partial_fit())
 
-        relio.set_curr_win(df[300:350])
+        # No drift.
+        relio.set_curr_win(self.features[50:100])
+        relio.detect_drift()
 
-        relio.monitor_drift()
-        self.assertFalse(relio.get_partial_fit())
-        self.assertTrue(relio.get_retrain_model())
+        self.assertFalse(relio.get_adapt_model())
+        self.assertFalse(relio.get_adjust_model())
+        self.assertEqual(relio.get_action(), DriftStatus.NO_DRIFT)
+
+        # Drift detected.
+        relio.set_curr_win(self.features[300:350])
+        relio.detect_drift()
+
+        self.assertFalse(relio.get_adjust_model())
+        self.assertTrue(relio.get_adapt_model())
+        self.assertEqual(relio.get_action(), DriftStatus.DRIFT)
 
 
 if __name__ == "__main__":

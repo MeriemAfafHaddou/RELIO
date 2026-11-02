@@ -104,7 +104,7 @@ class ConceptDrift:
         self.__drift_type = drift_type
 
 
-class RelioApi:
+class Relio:
     def __init__(
         self,
         window_size,
@@ -183,11 +183,17 @@ class RelioApi:
     def get_detect_thold(self):
         return self.__detect_thold
 
+    def get_adapt_model(self):
+        return self.__model_adaptation_required
+
+    def get_adjust_model(self):
+        return self.__model_adjustment_required
+
     # ——— RE-SETTERS ——————————————————————————————
-    def reset_retrain_model(self):
+    def reset_adapt_model(self):
         self.__model_adaptation_required = False
 
-    def reset_partial_fit(self):
+    def reset_adjust_model(self):
         self.__model_adjustment_required = False
 
     # ——— CONCEPT OPERATIONS ——————————————————————
@@ -258,19 +264,19 @@ class RelioApi:
         """
         Compare the current window with the reference distribution and
         update the concept and transition states accordingly.
+
+        Returns the identified drift type when classification is complete,
+        or None otherwise.
         """
         ref_distr = self.__curr_concept.get_ref_distr()
 
-        # Compare the current window with the reference distribution.
         result, ot_dist = self.compare_distributions(ref_distr, self.__curr_win)
 
-        # Store the OT distance for the entire stream.
         self.__ot_distance_history.append(ot_dist)
 
         if result == DriftStatus.NO_DRIFT:
             self.__curr_concept.increment_length()
 
-            # Update the reference distribution in logical time mode.
             if self.__time_mode == TimeMode.LOGICAL:
                 index_ref = random.randint(0, len(self.__curr_win) - 1)
                 index_cur = random.randint(0, len(self.__curr_win) - 1)
@@ -284,24 +290,30 @@ class RelioApi:
 
         elif result == DriftStatus.DRIFT:
             self.__model_adaptation_required = True
-
-            # Start a new transition and create its corresponding concept.
             self.__transition_start = self.__curr_win_num
 
             concept = Concept(self.__curr_win_num, self.__curr_win)
             self.__curr_concept = concept
             self.__concepts.append(concept)
 
-            # Record the detected drift.
             concept_drift = ConceptDrift(self.__curr_win_num)
             self.__concept_drifts.append(concept_drift)
 
         # Identify the drift type once the new concept reaches stability.
-        if self.__transition_start is not None and self.is_stable(
-            self.__curr_concept.get_length()
+        if (
+            self.__transition_start is not None
+            and self.is_stable(self.__curr_concept.get_length())
         ):
             self.__transition_end = self.__curr_win_num
-            self.identify_drift_type()
+
+            drift_type = self.identify_drift_type()
+
+            if drift_type != DriftType.NONE:
+                self.__transition_start = None
+                self.__transition_end = None
+                return drift_type
+
+        return None
 
     # ——— TYPE IDENTIFICATION ————————————————————————
     def is_stable(self, concept_length):
@@ -330,7 +342,7 @@ class RelioApi:
         if transition_duration <= self.__sudden_drift_threshold:
             return False
 
-        transition_distances = self.__distance_history[
+        transition_distances = self.__ot_distance_history[
             self.__transition_start : self.__transition_end + 1
         ]
 
@@ -402,11 +414,12 @@ class RelioApi:
         if self.is_drift_sudden():
             drift_type = DriftType.SUDDEN
 
+        elif self.is_drift_recurrent():
+            drift_type = DriftType.RECURRENT
+
         elif self.is_drift_incremental():
             drift_type = DriftType.INCREMENTAL
 
-        elif self.is_drift_recurrent():
-            drift_type = DriftType.RECURRENT
 
         elif self.is_drift_gradual():
             drift_type = DriftType.GRADUAL
