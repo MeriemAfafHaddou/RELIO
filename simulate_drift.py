@@ -65,29 +65,42 @@ def generate_recurrent(old_concept, new_concept, window_size=20):
     return pd.concat(segments, ignore_index=True)
 
 
-def generate_gradual(old_concept, new_concept, window_size=20):
+def generate_gradual(old_concept, new_concept, window_size=20, n_windows=15):
     """
     Generate a dataset containing gradual concept drift.
 
     Each intermediate window contains observations from both concepts.
-    The proportion of the new concept increases over time.
+    The proportion of the new concept increases progressively.
     """
 
-    old_samples = old_concept.sample(frac=1, random_state=42)
+    if n_windows < 3:
+        raise ValueError("n_windows must be at least 3.")
 
-    new_samples = new_concept.sample(frac=1, random_state=43)
+    old_proportions = np.linspace(1.0, 0.0, n_windows)
 
-    # Proportion of old-concept observations in each window.
-    old_proportions = [1.0, 0.85, 0.70, 0.50, 0.30, 0.15, 0.0]
+    old_counts = [round(window_size * p) for p in old_proportions]
+    new_counts = [window_size - count for count in old_counts]
+
+    required_old = sum(old_counts)
+    required_new = sum(new_counts)
+
+    old_samples = old_concept.sample(
+        n=required_old,
+        replace=required_old > len(old_concept),
+        random_state=42,
+    ).reset_index(drop=True)
+
+    new_samples = new_concept.sample(
+        n=required_new,
+        replace=required_new > len(new_concept),
+        random_state=43,
+    ).reset_index(drop=True)
 
     windows = []
     old_index = 0
     new_index = 0
 
-    for proportion in old_proportions:
-        old_count = round(window_size * proportion)
-        new_count = window_size - old_count
-
+    for i, (old_count, new_count) in enumerate(zip(old_counts, new_counts)):
         old_window = old_samples.iloc[old_index : old_index + old_count]
 
         new_window = new_samples.iloc[new_index : new_index + new_count]
@@ -96,6 +109,9 @@ def generate_gradual(old_concept, new_concept, window_size=20):
         new_index += new_count
 
         window = pd.concat([old_window, new_window])
+
+        window = window.sample(frac=1, random_state=100 + i).reset_index(drop=True)
+
         windows.append(window)
 
     return pd.concat(windows, ignore_index=True)
@@ -120,29 +136,30 @@ def allocate_class_counts(class_proportions, window_size):
     return counts
 
 
-def generate_incremental(old_concept, new_concept, window_size=20):
+def generate_incremental(
+    old_concept,
+    new_concept,
+    window_size=20,
+    n_before=10,
+    n_transition=10,
+    n_after=10,
+):
     """
     Generate a dataset containing incremental concept drift.
 
     The stream contains:
-        - 3 windows from the old concept.
-        - 3 intermediate windows with progressively changing
-          class proportions.
-        - 3 windows from the new concept.
+        - n_before windows from the old concept.
+        - n_transition windows with progressively changing
+          feature and class distributions.
+        - n_after windows from the new concept.
 
     Species labels are preserved throughout the stream.
     """
 
-    old_samples = old_concept.sample(frac=1, random_state=42).reset_index(drop=True)
-
-    new_samples = new_concept.sample(frac=1, random_state=43).reset_index(drop=True)
-
-    # Reserve observations for the initial and final concepts.
-    old_windows = old_samples.iloc[: 3 * window_size]
-    new_windows = new_samples.iloc[: 3 * window_size]
-
-    # Determine the class distribution of each concept.
-    classes = new_concept["species"].unique()
+    classes = np.union1d(
+        old_concept["species"].unique(),
+        new_concept["species"].unique(),
+    )
 
     old_proportions = (
         old_concept["species"]
@@ -158,40 +175,78 @@ def generate_incremental(old_concept, new_concept, window_size=20):
         .to_numpy()
     )
 
-    # Generate three intermediate windows.
-    windows = [old_windows]
+    windows = []
 
-    lambdas = [0.25, 0.50, 0.75]
+    def sample_concept(concept, species, count, seed):
+        if count == 0:
+            return pd.DataFrame(columns=concept.columns)
 
-    for i, lam in enumerate(lambdas):
-        # Gradually transition from the old class distribution
-        # to the new class distribution.
+        population = concept[concept["species"] == species]
+
+        if population.empty:
+            return pd.DataFrame(columns=concept.columns)
+
+        return population.sample(
+            n=count,
+            replace=count > len(population),
+            random_state=seed,
+        )
+
+    # Before drift: observations from the old concept.
+    for i in range(n_before):
+        window = old_concept.sample(
+            n=window_size,
+            replace=window_size > len(old_concept),
+            random_state=100 + i,
+        )
+        windows.append(window)
+
+    # During drift: progressively mix both concepts.
+    for i in range(n_transition):
+
+        lam = (i + 1) / (n_transition + 1)
+
         class_proportions = (1 - lam) * old_proportions + lam * new_proportions
 
-        class_counts = allocate_class_counts(class_proportions, window_size)
+        class_counts = allocate_class_counts(
+            class_proportions,
+            window_size,
+        )
 
         class_samples = []
 
         for j, (species, count) in enumerate(zip(classes, class_counts)):
-            if count == 0:
-                continue
 
-            population = new_concept[new_concept["species"] == species]
+            old_count = round(count * (1 - lam))
+            new_count = count - old_count
 
-            samples = population.sample(
-                n=count, replace=count > len(population), random_state=100 + i * 10 + j
+            old_samples = sample_concept(
+                old_concept, species, old_count, 200 + i * 100 + j
             )
 
-            class_samples.append(samples)
+            new_samples = sample_concept(
+                new_concept, species, new_count, 300 + i * 100 + j
+            )
 
-        window = pd.concat(class_samples)
+            class_samples.extend([old_samples, new_samples])
 
-        # Shuffle observations within the intermediate window.
-        window = window.sample(frac=1, random_state=200 + i).reset_index(drop=True)
+        window = pd.concat(class_samples, ignore_index=True)
+
+        window = window.sample(
+            frac=1,
+            random_state=400 + i,
+        ).reset_index(drop=True)
 
         windows.append(window)
 
-    windows.append(new_windows)
+    # After drift: observations from the new concept.
+    for i in range(n_after):
+        window = new_concept.sample(
+            n=window_size,
+            replace=window_size > len(new_concept),
+            random_state=500 + i,
+        )
+        windows.append(window)
 
     return pd.concat(windows, ignore_index=True)
 
