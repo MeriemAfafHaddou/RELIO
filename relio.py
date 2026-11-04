@@ -113,7 +113,7 @@ class Relio:
         ot_metric=OTMetric.WASSERSTEIN1,
         cost_function=CostFunction.EUCLIDEAN,
         stability_threshold=3,
-        sudden_drift_threshold=2,
+        sudden_drift_threshold=1,
         df: pd.DataFrame = None,
         time_mode=TimeMode.LOGICAL,
     ):
@@ -155,6 +155,7 @@ class Relio:
 
         self.__transition_start = None
         self.__transition_end = None
+        self.__drift_onset = None
 
     # ——— SETTERS ——————————————————————————————
     def set_curr_win(self, current_window):
@@ -285,10 +286,16 @@ class Relio:
                 self.__curr_concept.set_ref_distr(ref_distr)
 
         elif result == DriftStatus.WARNING:
+            if self.__drift_onset is None:
+                self.__drift_onset = self.__curr_win_num
+
             self.__model_adjustment_required = True
             self.__curr_concept.increment_length()
 
         elif result == DriftStatus.DRIFT:
+            if self.__drift_onset is None:
+                self.__drift_onset = self.__curr_win_num
+
             self.__model_adaptation_required = True
             self.__transition_start = self.__curr_win_num
 
@@ -300,19 +307,20 @@ class Relio:
             self.__concept_drifts.append(concept_drift)
 
         # Identify the drift type once the new concept reaches stability.
-        if (
-            self.__transition_start is not None
-            and self.is_stable(self.__curr_concept.get_length())
-        ):
-            self.__transition_end = self.__curr_win_num
+        if self.__transition_start is not None:
+            current_length = self.__curr_concept.get_length()
+            stable = self.is_stable(current_length)
 
-            drift_type = self.identify_drift_type()
+            if stable:
+                self.__transition_end = self.__curr_win_num
 
-            if drift_type != DriftType.NONE:
-                self.__transition_start = None
-                self.__transition_end = None
-                return drift_type
+                drift_type = self.identify_drift_type()
 
+                if drift_type != DriftType.NONE:
+                    self.__transition_start = None
+                    self.__transition_end = None
+
+                    return drift_type
         return None
 
     # ——— TYPE IDENTIFICATION ————————————————————————
@@ -328,25 +336,30 @@ class Relio:
         Determine whether the transition completes within the maximum
         duration configured for sudden drift.
         """
-        transition_duration = self.__transition_end - self.__transition_start
-        return transition_duration <= self.__sudden_drift_threshold
+        if self.__drift_onset is None or self.__transition_start is None:
+            return False
+
+        transition_duration = self.__transition_start - self.__drift_onset
+        return transition_duration < self.__sudden_drift_threshold
 
     def is_drift_incremental(self):
         """
         Determine whether a drift transition is incremental.
 
         An incremental transition lasts longer than the sudden drift
-        threshold and exhibits a non-decreasing OT distance.
+        threshold and exhibits a non-decreasing OT distance from the
+        window preceding its onset until drift detection.
         """
-        transition_duration = self.__transition_end - self.__transition_start
-        if transition_duration <= self.__sudden_drift_threshold:
+        if self.__drift_onset is None or self.__transition_start is None:
+            return False
+
+        if self.__drift_onset == 0:
             return False
 
         transition_distances = self.__ot_distance_history[
-            self.__transition_start : self.__transition_end + 1
+            self.__drift_onset - 2 : self.__transition_start
         ]
-
-        if len(transition_distances) < 2:
+        if len(transition_distances) < 3:
             return False
 
         return all(
@@ -403,7 +416,7 @@ class Relio:
         return source_1_decreases and source_2_increases
 
     def identify_drift_type(self):
-        """Identify the drift type once the transition has stabilized."""
+        """Identify the drift type once the new concept has stabilized."""
 
         if self.__transition_start is None or self.__transition_end is None:
             return DriftType.NONE
@@ -419,7 +432,6 @@ class Relio:
 
         elif self.is_drift_incremental():
             drift_type = DriftType.INCREMENTAL
-
 
         elif self.is_drift_gradual():
             drift_type = DriftType.GRADUAL
