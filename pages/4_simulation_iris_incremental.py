@@ -1,378 +1,155 @@
-import datetime
-import time
-
 import numpy as np
-import pandas as pd
 import streamlit as st
-from sklearn.cluster import MiniBatchKMeans
-from sklearn.decomposition import PCA
-from sklearn.linear_model import SGDClassifier
-from sklearn.metrics import accuracy_score, silhouette_score
-from sklearn.model_selection import GridSearchCV
 
-import relio
-
-st.logo("images/logo.png")
-st.set_page_config(
-    page_title="Simulation - Incremental Drift",
-    page_icon="images/icon.png",
-    layout="wide",
-    initial_sidebar_state="expanded",
+from helpers import (
+    configure_page,
+    configure_parameters,
+    display_configuration,
+    display_drift_type,
+    evaluate_window,
+    handle_drift_action,
+    initialize_models,
+    initialize_simulation,
+    initialize_simulation_display,
+    prepare_pca,
+    update_simulation_charts,
 )
-pca = PCA(n_components=1)
+from relio import DriftStatus
 
-st.write("""
-# Simulation of an incremental drift
-""")
-
-with st.expander(":blue[:question: What is an incremental drift?]",
-                 expanded=False):
-    st.write("""
-       Incremental concept drift is a special case of gradual drift, where
-       with more than two sources, the difference between them is very
-       small. This means the drift is only noticed over a longer period
-       of time, as illustrated in the figure:
-    """)
-
-    st.image("images/incremental.png")
-
-st.write("""### Simulation :""")
-df = pd.read_csv("data/iris_incremental.csv")
-col1, col2 = st.columns(2)
-st.markdown("")
-btn1, btn2 = st.columns(2)
-with btn1:
-    with st.popover(":gear: Modify parameters"):
-        st.write("""
-            :gear: Modify simulation parameters
-        """)
-        model_type = st.selectbox(
-            "Choose the model type",
-            ["Supervised - Stochastic Gradient Descent",
-             "Unsupervised - KMeans"],
-        )
-        window_size = st.number_input(
-            "Enter the window size", min_value=1, value=40,
-            placeholder="Window size"
-        )
-        metric_input = st.selectbox(
-            "Choose the detection metric",
-            ["Wasserstein order 1",
-             "Wasserstein order 2",
-             "Regularized Wasserstein"],
-            index=1,
-        )
-        cost_input = st.selectbox(
-            "Choose the cost function",
-            ["Euclidean", "Standardized Euclidean", "Mahalanobis"],
-            index=1,
-        )
-
-        if metric_input == "Wasserstein order 1":
-            ot_metric = relio.OTMetric.WASSERSTEIN1
-        elif metric_input == "Wasserstein order 2":
-            ot_metric = relio.OTMetric.WASSERSTEIN2
-        elif metric_input == "Regularized Wasserstein":
-            ot_metric = relio.OTMetric.SINKHORN
-
-        if cost_input == "Euclidean":
-            cost_function = relio.CostFunction.EUCLIDEAN
-        elif cost_input == "Standardized Euclidean":
-            cost_function = relio.CostFunction.SEUCLIDEAN
-        elif cost_input == "Mahalanobis":
-            cost_function = relio.CostFunction.MAHALANOBIS
-
-        warning_threshold = st.number_input(
-            "Enter the alert percentage",
-            min_value=1,
-            value=35,
-            placeholder="Alert percentage",
-            step=1,
-        )
-        detect_thold = st.number_input(
-            "Enter the detection percentage",
-            min_value=1,
-            value=50,
-            placeholder="Detection percentage",
-            step=1,
-        )
-        stblty_thold = st.number_input(
-            "Enter the stability threshold",
-            min_value=1,
-            value=3,
-            placeholder="Stability threshold",
-            step=1,
-        )
-
-api = relio.Relio(
-    window_size,
-    warning_threshold,
-    detect_thold,
-    ot_metric,
-    cost_function,
-    stblty_thold,
-    df,
-    0,
+# Page configuration.
+configure_page(
+    page_title="Incremental drift simulation",
+    heading="Incremental drift simulation",
+    description=(
+        "Incremental concept drift occurs when the data distribution "
+        "changes progressively over time. The transition from the "
+        "initial concept to the new concept happens through a sequence "
+        "of small changes."
+    ),
+    image="images/incremental.png",
 )
-ref_dist = []
-for i in range(window_size):
-    ref_dist.append(df.iloc[i])
-first_concept = relio.Concept(1, np.array(ref_dist))
-api.add_concept(first_concept)
-api.set_curr_concept(first_concept)
-current_window = []
-drift_impacts = []
-adapt_perform = []
-ref_dist_X = np.array(ref_dist)[:, :-1]
-ref_dist_y = np.array(ref_dist)[:, -1].astype(int)
-all_classes = np.unique(np.array(df)[:, -1].astype(int))
 
-with col1:
-    st.markdown(
-        f"""
-        :small_red_triangle_down: Window size: ***{window_size} data points***
-        """,
-        help="This is the :blue-background[number of data points] considered "
-        "for calculating the drift metric.",
+# Default parameter values.
+defaults = {
+    "window_size": 40,
+    "metric": "Wasserstein order 2",
+    "cost_function": "Standardized Euclidean",
+    "warning_threshold": 10,
+    "detection_threshold": 15,
+    "stability_threshold": 3,
+}
+
+# Configure simulation parameters.
+parameters = configure_parameters(defaults)
+display_configuration(parameters)
+
+# Start button.
+_, button_col = st.columns(2)
+
+with button_col:
+    start_button = st.button(":arrow_forward: Start", type="primary")
+
+
+if start_button:
+
+    # Initialize the dataset and RELIO.
+    simulation = initialize_simulation(
+        dataset_path="data/iris_incremental.csv",
+        parameters=parameters,
     )
 
-    st.markdown(
-        f"""
-        :small_red_triangle_down: Detection metric: ***{metric_input}***
-        """,
-        help="This is the metric based on optimal transport to "
-        ":blue-background[compare data distributions] in order to detect "
-        "drift. Optimal transport offers a variety of metrics. We chose "
-        "the ones most widely used in the literature.",
+    df = simulation["df"]
+    relio = simulation["relio"]
+    ref_dist_X = simulation["ref_dist_X"]
+    ref_dist_y = simulation["ref_dist_y"]
+    current_window = simulation["current_window"]
+
+    # Initialize the models.
+    models = initialize_models(
+        parameters["model_type"],
+        ref_dist_X,
+        ref_dist_y,
     )
 
-    st.markdown(
-        f"""
-        :small_red_triangle_down: Cost function: ***{cost_input}***
-        """,
-        help="This is a :blue-background[distance computed between data pairs]"
-        " from two distributions, used by optimal transport metrics.",
+    model = models["model"]
+    drifted_model = models["drifted_model"]
+    metric_name = models["metric_name"]
+    adapt_perform = models["adapt_perform"]
+    drift_impacts = models["drift_impacts"]
+
+    # Prepare the data for visualization.
+    pca, pc1 = prepare_pca(df)
+
+    # Initialize the charts.
+    chart, distances, metric_chart = initialize_simulation_display(
+        pca,
+        metric_name,
+        parameters["metric_input"],
     )
 
-    st.markdown(
-        f"""
-        :small_red_triangle_down: Model type : ***{model_type}***
-        """,
-        help="Specifies whether the model is "
-        ":blue-background[supervised or unsupervised].",
-    )
+    # Simulation parameters.
+    window_size = parameters["window_size"]
+    model_type = parameters["model_type"]
+    displayed_drifts = set()
 
-with col2:
-    st.markdown(
-        f"""
-        :small_red_triangle_down: Alert percentage : ***{warning_threshold}%***
-        """,
-        help="This is the :blue-background[distribution shift percentage] "
-        "above which an alert is triggered. For example, if the "
-        "comparison metric increases by 20%, an alert is raised.",
-    )
-
-    st.markdown(
-        f"""
-        :small_red_triangle_down: Detection percentage : ***{detect_thold}%***
-        """,
-        help="This is the :blue-background[distribution shift percentage] "
-        "above which drift is detected. For example, if the comparison "
-        "metric increases by 50%, drift is confirmed.",
-    )
-
-    st.markdown(
-        f"""
-        :small_red_triangle_down: Stability threshold : ***{stblty_thold}
-        windows***
-        """,
-        help="This is the :blue-background[number of windows] used to declare "
-        "that the data are :blue-background[stable within a "
-        "distribution], meaning no drift is present.",
-    )
-
-pc1 = pca.fit_transform(df.iloc[:, :-1])
-with btn2:
-    button = st.button(":arrow_forward: Start", type="primary")
-if model_type == "Supervised - Stochastic Gradient Descent":
-    param_grid = {
-        "alpha": [0.0001, 0.001, 0.01, 0.1],
-        "penalty": ["l2", "l1", "elasticnet"],
-        "max_iter": [1000, 2000, 3000],
-    }
-    grid_search = GridSearchCV(
-        estimator=SGDClassifier(),
-        param_grid=param_grid,
-        cv=5,
-        scoring="accuracy",
-        error_score="raise",
-    )
-    grid_search.fit(ref_dist_X, ref_dist_y)
-    best_params = grid_search.best_params_
-    model = SGDClassifier(**best_params, random_state=42)
-    model.partial_fit(ref_dist_X, ref_dist_y, all_classes)
-    drifted_model = SGDClassifier(**best_params, random_state=42)
-    drifted_model.partial_fit(ref_dist_X, ref_dist_y, all_classes)
-    METRIC_NAME = "Precision"
-elif model_type == "Unsupervised - KMeans":
-    silhouette_avg = []
-    K = range(2, 11)
-    for k in K:
-        kmeans = MiniBatchKMeans(n_clusters=k, random_state=42)
-        cluster_labels = kmeans.fit_predict(ref_dist_X)
-        silhouette_avg.append(silhouette_score(ref_dist_X, cluster_labels))
-    n = np.argmax(silhouette_avg) + 2
-    model = MiniBatchKMeans(n_clusters=n, random_state=42)
-    drifted_model = MiniBatchKMeans(n_clusters=n, random_state=42)
-    model = model.fit(ref_dist_X)
-    cluster_labels_model = model.labels_
-    drifted_model = drifted_model.fit(ref_dist_X)
-    cluster_labels_drift = drifted_model.labels_
-    adapt_perform.append(silhouette_score(ref_dist_X, cluster_labels_model))
-    drift_impacts.append(silhouette_score(ref_dist_X, cluster_labels_drift))
-    METRIC_NAME = "Silhouette Score"
-if button:
-    st.toast("Initializing the API...", icon="⏳")
-    st.write("""
-    ##### :bar_chart: Evolution of the data distribution:
-    """)
-    chart = st.empty()
-    st.write(
-        f"""
-        🔻 Quality of representation on axis 1 =
-        **{pca.explained_variance_ratio_[0] * 100:.2f}%**
-        """
-    )
-
-    st.write(
-        f"""
-        ##### :chart_with_upwards_trend: Evolution of the {metric_input}
-        distance between the reference distribution and the current window:
-        """
-    )
-    distances = st.empty()
-    st.divider()
-
-    st.write(
-        f"""
-        ##### 📉 Impact of gradual drift - Evolution of {METRIC_NAME}:
-        """
-    )
-
-    metric_chart = st.empty()
-
-    st.divider()
-    st.write("""
-    ### :clock1: History of detected drifts:""")
+    # Process the data stream.
     for i in range(window_size, len(df) + 1):
-        # Plot the data from the start to the current point
+
         chart.line_chart(pc1[:i])
+
         current_window.append(df.iloc[i - 1])
+
         if len(current_window) == window_size:
-            api.set_curr_win(np.array(current_window))
-            api.detect_drift()
-            win_X = np.array(current_window)[:, :-1]
-            win_y = np.array(current_window)[:, -1].astype(int)
 
-            if model_type == "Supervised - Stochastic Gradient Descent":
-                y_pred = model.predict(win_X)
-                metric = accuracy_score(y_pred, win_y)
+            win = np.array(current_window)
+            win_X = win[:, :-1]
+            win_y = win[:, -1].astype(int)
 
-                y_pred_drift = drifted_model.predict(win_X)
-                drifted_metric = accuracy_score(y_pred_drift, win_y)
+            # Detect drift.
+            relio.set_curr_win(win_X)
+            drift_type = relio.detect_drift()
+            action = relio.get_action()
 
-            train_X = np.concatenate((ref_dist_X, win_X))
-            train_y = np.concatenate((ref_dist_y, win_y))
-
-            if api.get_action() == 0:
-                drift_time = datetime.datetime.now().strftime("%H:%M:%S")
-                st.toast(
-                    ":red[A drift is detected in data with index "
-                    f"{i + 1 - window_size} at {drift_time}]",
-                    icon="⚠️",
-                )
-                st.error(
-                    "A drift is detected in data with index "
-                    f"{i + 1 - window_size} at {drift_time}",
-                    icon="⚠️",
-                )
-                drift_type = api.identify_drift_type()
-                if drift_type is not None:
-                    if drift_type == relio.DriftType.GRADUAL:
-                        st.toast(":blue[The drift type is: Gradual]", icon="📌")
-                        st.info("The drift type is: Gradual", icon="📌")
-                    elif drift_type == relio.DriftType.SUDDEN:
-                        st.toast(":blue[The drift type is: Sudden]", icon="📌")
-                        st.info("The drift type is: Sudden", icon="📌")
-                    elif drift_type == relio.DriftType.RECURRENT:
-                        st.toast(
-                            ":blue[The drift type is: Recurrent]", icon="📌")
-                        st.info("The drift type is: Recurrent", icon="📌")
-                    elif drift_type == relio.DriftType.INCREMENTAL:
-                        st.toast(
-                            ":blue[The drift type is: Incremental]", icon="📌")
-                        st.info("The drift type is: Incremental", icon="📌")
-                api.reset_adapt_model()
-                if model_type == "Supervised - Stochastic Gradient Descent":
-                    model.fit(train_X, train_y)
-                elif model_type == "Unsupervised - KMeans":
-                    labels = model.fit(train_X)
-                ref_dist_X = win_X
-                ref_dist_y = win_y
-
-            elif api.get_action() == 1:
-                alert_time = datetime.datetime.now().strftime("%H:%M:%S")
-                st.toast(
-                    f"Alert: A minor change in distribution has occurred in "
-                    f"data with index {i + 1 - window_size} at {alert_time}!",
-                    icon="❗",
-                )
-                st.warning(
-                    f"Alert: A minor change in distribution has occurred in "
-                    f"data with index {i + 1 - window_size} at {alert_time}!",
-                    icon="❗",
-                )
-                if model_type == "Supervised - Stochastic Gradient Descent":
-                    model.partial_fit(win_X, win_y, all_classes)
-                elif model_type == "Unsupervised - KMeans":
-                    model.partial_fit(win_X)
-                api.reset_adjust_model()
-
-            distances_data = pd.DataFrame(
-                api.get_distance_history()[:i], columns=["distance"])
-            distances_data["alert"] = api.get_warning_thold()
-            distances_data["detection"] = api.get_detect_thold()
-            distances.line_chart(
-                distances_data, color=["#338AFF", "#FFAC1C", "#FF0D0D"]
+            # Handle model adaptation or warning.
+            ref_dist_X, ref_dist_y = handle_drift_action(
+                action,
+                model_type,
+                model,
+                win_X,
+                win_y,
+                ref_dist_X,
+                ref_dist_y,
+                i,
             )
 
-            if model_type == "Unsupervised - KMeans":
-                labels = model.predict(win_X)
-                labels_drift = drifted_model.predict(win_X)
-                metric = silhouette_score(win_X, labels)
-                drifted_metric = silhouette_score(win_X, labels_drift)
+            if action == DriftStatus.DRIFT:
+                relio.reset_adapt_model()
+
+            elif action == DriftStatus.WARNING:
+                relio.reset_adjust_model()
+
+            # Display drift classification when available.
+            display_drift_type(drift_type, i, displayed_drifts)
+
+            # Evaluate model performance.
+            metric, drifted_metric = evaluate_window(
+                model_type,
+                model,
+                drifted_model,
+                win_X,
+                win_y,
+            )
+
             adapt_perform.append(metric)
             drift_impacts.append(drifted_metric)
 
-            metric_data = pd.DataFrame()
-            metric_data["with adaptation"] = adapt_perform[:i]
-            metric_data["without adaptation"] = drift_impacts[:i]
-            metric_chart.line_chart(metric_data, color=["#338AFF", "#FF0D0D"])
+            # Update the charts.
+            update_simulation_charts(
+                relio,
+                distances,
+                metric_chart,
+                adapt_perform,
+                drift_impacts,
+            )
 
             current_window = []
-        drift_type = api.identify_drift_type()
-        if drift_type is not None:
-            if drift_type == relio.DriftType.GRADUAL:
-                st.toast(":blue[The drift type is: Gradual]", icon="📌")
-                st.info("The drift type is: Gradual", icon="📌")
-            elif drift_type == relio.DriftType.SUDDEN:
-                st.toast(":blue[The drift type is: Sudden]", icon="📌")
-                st.info("The drift type is: Sudden", icon="📌")
-            elif drift_type == relio.DriftType.RECURRENT:
-                st.toast(":blue[The drift type is: Recurrent]", icon="📌")
-                st.info("The drift type is: Recurrent", icon="📌")
-            elif drift_type == relio.DriftType.INCREMENTAL:
-                st.toast(":blue[The drift type is: Incremental]", icon="📌")
-                st.info("The drift type is: Incremental", icon="📌")
-        # Pause for a moment
-        time.sleep(0.01)

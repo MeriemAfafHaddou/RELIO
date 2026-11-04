@@ -12,7 +12,7 @@ from sklearn.model_selection import GridSearchCV
 from relio import Concept, CostFunction, DriftStatus, DriftType, OTMetric, Relio
 
 
-def configure_page(page_title, heading, description, image):
+def configure_page(page_title, heading, description, image=None):
     """Configure the Streamlit page and display its introduction."""
     st.set_page_config(
         page_title=page_title,
@@ -26,7 +26,8 @@ def configure_page(page_title, heading, description, image):
 
     with st.expander(":blue[:question: What is concept drift?]", expanded=False):
         st.write(description)
-        st.image(image)
+        if image is not None:
+            st.image(image)
 
     st.write("### Simulation:")
 
@@ -125,8 +126,12 @@ def prepare_pca(df):
     return pca, pc1
 
 
-def initialize_simulation(dataset_path, parameters):
+def initialize_simulation(dataset_path, parameters, data_slice=None):
     df = pd.read_csv(dataset_path)
+
+    if data_slice is not None:
+        start, end = data_slice
+        df = df.iloc[start:end].reset_index(drop=True)
 
     window_size = parameters["window_size"]
 
@@ -149,25 +154,22 @@ def initialize_simulation(dataset_path, parameters):
 
     ref_dist_X = ref_dist[:, :-1]
     ref_dist_y = ref_dist[:, -1].astype(int)
-    
+
     first_concept = Concept(1, ref_dist_X)
 
     relio.add_concept(first_concept)
     relio.set_curr_concept(first_concept)
-
-    
 
     return {
         "df": df,
         "relio": relio,
         "ref_dist_X": ref_dist_X,
         "ref_dist_y": ref_dist_y,
-        "all_classes": np.unique(np.array(df)[:, -1].astype(int)),
+        "all_classes": np.unique(df.iloc[:, -1].to_numpy().astype(int)),
         "current_window": [],
         "drift_impacts": [],
         "adapt_perform": [],
     }
-
 
 def display_configuration(parameters):
     col1, col2 = st.columns(2)

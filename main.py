@@ -30,37 +30,31 @@ st.write("""
 st.page_link("pages/1_documentation.py", label="Documentation", icon="📑")
 st.divider()
 st.write("""
-### ▶️ Data generation
-""")
-st.page_link("pages/2_generated_data.py",
-             label="Generated Data", icon="🔻")
-
-st.divider()
-st.write("""
 ### ▶️ Simulation of different types of drifts
 """)
-st.page_link("pages/3_simulation_iris_gradual.py",
-             label=" Simulation : Iris Gradual", icon="🔻")
+st.page_link("pages/2_simulation_iris_sudden.py",
+             label=" Simulation : Iris Sudden", icon="🔻")
+st.page_link("pages/3_simulation_iris_recurrent.py",
+             label=" Simulation : Iris Recurrent", icon="🔻")
 st.page_link("pages/4_simulation_iris_incremental.py",
              label=" Simulation : Iris Incremental", icon="🔻")
-st.page_link("pages/5_simulation_iris_sudden.py",
-             label=" Simulation : Iris Sudden", icon="🔻")
-st.page_link("pages/6_simulation_iris_recurrent.py",
-             label=" Simulation : Iris Recurrent", icon="🔻")
+st.page_link("pages/5_simulation_iris_gradual.py",
+             label=" Simulation : Iris Gradual", icon="🔻")
+
 st.divider()
 
 st.write("""
 ### ▶️ Tests on datasets
 """)
-st.page_link("pages/7_synthetic_data.py",
+st.page_link("pages/6_synthetic_data.py",
              label=" Tests : Synthetic Datasets", icon="🔻")
-st.page_link("pages/8_real_data.py",
+st.page_link("pages/7_real_data.py",
              label=" Tests : Real Datasets", icon="🔻")
-st.page_link("pages/9_application_on_social_modia.py",
+st.page_link("pages/8_application_on_social_modia.py",
              label=" Application : Social Media", icon="🔻")
 
 st.divider()
 st.write("""
 ### ▶️ Comparison with other solutions
 """)
-st.page_link("pages/10_comparaison.py", label=" Comparaison", icon="🔻")
+st.page_link("pages/9_comparaison.py", label=" Comparaison", icon="🔻")
