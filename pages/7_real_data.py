@@ -1,7 +1,5 @@
 import numpy as np
-import pandas as pd
 import streamlit as st
-from sklearn.preprocessing import LabelEncoder
 
 from helpers import (
     configure_page,
@@ -37,14 +35,9 @@ dataset_option = st.selectbox(
 
 # Dataset-specific configuration and preprocessing.
 if dataset_option == "Asfault":
-    raw_df = pd.read_csv("data/Asfault.csv", header=None).iloc[:8000].copy()
-
-    label_column = 64
-    window_size = 500
-    model_type_index = 1
-
+    dataset_path = "data/Asfault.csv"
     defaults = {
-        "window_size": window_size,
+        "window_size": 500,
         "metric": "Wasserstein order 2",
         "cost_function": "Standardized Euclidean",
         "warning_threshold": 10,
@@ -53,14 +46,9 @@ if dataset_option == "Asfault":
     }
 
 else:
-    raw_df = pd.read_csv("data/Ozone.csv", header=None).copy()
-
-    label_column = 72
-    window_size = 150
-    model_type_index = 0
-
+    dataset_path = "data/Ozone.csv"
     defaults = {
-        "window_size": window_size,
+        "window_size": 150,
         "metric": "Wasserstein order 2",
         "cost_function": "Standardized Euclidean",
         "warning_threshold": 50,
@@ -68,19 +56,8 @@ else:
         "stability_threshold": 3,
     }
 
-# Encode the target labels and keep them as the last column.
-label_encoder = LabelEncoder()
-encoded_labels = label_encoder.fit_transform(raw_df[label_column])
-
-df = raw_df.drop(columns=[label_column]).copy()
-df.columns = df.columns.astype(str)
-df["class"] = encoded_labels
-
 # Configure simulation parameters.
-parameters = configure_parameters(
-    defaults,
-    model_type_index=model_type_index,
-)
+parameters = configure_parameters(defaults)
 display_configuration(parameters)
 
 # Start button.
@@ -89,13 +66,12 @@ _, button_col = st.columns(2)
 with button_col:
     start_button = st.button(":arrow_forward: Start", type="primary")
 
-
 if start_button:
 
     # Initialize the dataset and RELIO.
     simulation = initialize_simulation(
+        dataset_path=dataset_path,
         parameters=parameters,
-        dataframe=df,
     )
 
     df = simulation["df"]
