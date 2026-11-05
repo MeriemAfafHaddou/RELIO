@@ -45,7 +45,6 @@ def configure_parameters(defaults):
         "Mahalanobis": CostFunction.MAHALANOBIS,
     }
 
-
     with st.popover(":gear: Modify parameters"):
         st.write(":gear: Modify simulation parameters")
 
@@ -77,16 +76,12 @@ def configure_parameters(defaults):
 
         warning_threshold = st.number_input(
             "Enter the alert percentage",
-            min_value=1,
-            value=defaults["warning_threshold"],
-            step=1,
+            value=float(defaults["warning_threshold"]),
         )
 
         detection_threshold = st.number_input(
             "Enter the detection percentage",
-            min_value=1,
-            value=defaults["detection_threshold"],
-            step=1,
+            value=float(defaults["detection_threshold"]),
         )
 
         stability_threshold = st.number_input(
@@ -133,6 +128,21 @@ def initialize_simulation(dataset_path, parameters, data_slice=None):
         start, end = data_slice
         df = df.iloc[start:end].reset_index(drop=True)
 
+    # Encode non-numerical labels
+    labels = df.iloc[:, -1]
+
+    try:
+        encoded_labels = pd.to_numeric(labels).astype(int)
+    except (ValueError, TypeError):
+        encoded_labels, classes = pd.factorize(labels, sort=False)
+
+        if -1 in encoded_labels:
+            raise ValueError("The label column contains missing values.")
+
+    df[df.columns[-1]] = pd.Series(
+        encoded_labels, index=df.index, dtype="int64"
+    )
+
     window_size = parameters["window_size"]
 
     api_parameters = {
@@ -165,11 +175,12 @@ def initialize_simulation(dataset_path, parameters, data_slice=None):
         "relio": relio,
         "ref_dist_X": ref_dist_X,
         "ref_dist_y": ref_dist_y,
-        "all_classes": np.unique(df.iloc[:, -1].to_numpy().astype(int)),
+        "all_classes": np.unique(df.iloc[:, -1].to_numpy()),
         "current_window": [],
         "drift_impacts": [],
         "adapt_perform": [],
     }
+
 
 def display_configuration(parameters):
     col1, col2 = st.columns(2)
@@ -279,9 +290,7 @@ def initialize_models(model_type, ref_dist_X, ref_dist_y):
         n_clusters = np.argmax(silhouette_scores) + 2
 
         model = MiniBatchKMeans(n_clusters=n_clusters, random_state=42)
-        drifted_model = MiniBatchKMeans(
-            n_clusters=n_clusters, random_state=42
-        )
+        drifted_model = MiniBatchKMeans(n_clusters=n_clusters, random_state=42)
 
         model.fit(ref_dist_X)
         drifted_model.fit(ref_dist_X)
@@ -369,10 +378,7 @@ def handle_drift_action(
 
     if action == DriftStatus.DRIFT:
         drift_time = datetime.datetime.now().strftime("%H:%M:%S")
-        message = (
-            f"A drift is detected at data index "
-            f"{window_index} at {drift_time}."
-        )
+        message = f"A drift is detected at data index {window_index} at {drift_time}."
 
         st.toast(message, icon="⚠️")
         st.error(message, icon="⚠️")
@@ -403,18 +409,14 @@ def evaluate_window(model_type, model, drifted_model, win_X, win_y):
 
     if model_type == "Supervised - Stochastic Gradient Descent":
         metric = accuracy_score(win_y, model.predict(win_X))
-        drifted_metric = accuracy_score(
-            win_y, drifted_model.predict(win_X)
-        )
+        drifted_metric = accuracy_score(win_y, drifted_model.predict(win_X))
 
     else:
         labels = model.predict(win_X)
         drifted_labels = drifted_model.predict(win_X)
 
         metric = calculate_silhouette_score(win_X, labels)
-        drifted_metric = calculate_silhouette_score(
-            win_X, drifted_labels
-        )
+        drifted_metric = calculate_silhouette_score(win_X, drifted_labels)
 
     return metric, drifted_metric
 
