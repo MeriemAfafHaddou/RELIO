@@ -12,7 +12,7 @@ from sklearn.model_selection import GridSearchCV
 from relio import Concept, CostFunction, DriftStatus, DriftType, OTMetric, Relio
 
 
-def configure_page(page_title, heading, description, image=None):
+def configure_page(page_title, heading, description, image=None, section_heading="Simulation:"):
     """Configure the Streamlit page and display its introduction."""
     st.set_page_config(
         page_title=page_title,
@@ -29,10 +29,10 @@ def configure_page(page_title, heading, description, image=None):
         if image is not None:
             st.image(image)
 
-    st.write("### Simulation:")
+    st.write(f"### {section_heading}")
 
 
-def configure_parameters(defaults):
+def configure_parameters(defaults, include_model_type=True):
     metric_options = {
         "Wasserstein order 1": OTMetric.WASSERSTEIN1,
         "Wasserstein order 2": OTMetric.WASSERSTEIN2,
@@ -45,16 +45,19 @@ def configure_parameters(defaults):
         "Mahalanobis": CostFunction.MAHALANOBIS,
     }
 
+    model_type = None
+
     with st.popover(":gear: Modify parameters"):
         st.write(":gear: Modify simulation parameters")
 
-        model_type = st.selectbox(
-            "Choose the model type",
-            [
-                "Supervised - Stochastic Gradient Descent",
-                "Unsupervised - KMeans",
-            ],
-        )
+        if include_model_type:
+            model_type = st.selectbox(
+                "Choose the model type",
+                [
+                    "Supervised - Stochastic Gradient Descent",
+                    "Unsupervised - KMeans",
+                ],
+            )
 
         window_size = st.number_input(
             "Enter the window size",
@@ -114,8 +117,8 @@ def configure_parameters(defaults):
     }
 
 
-def prepare_pca(df):
-    pca = PCA(n_components=2)
+def prepare_pca(df, n_components=2):
+    pca = PCA(n_components=n_components)
     pc1 = pca.fit_transform(df.iloc[:, :-1])
 
     return pca, pc1
@@ -134,7 +137,7 @@ def initialize_simulation(dataset_path, parameters, data_slice=None):
     try:
         encoded_labels = pd.to_numeric(labels).astype(int)
     except (ValueError, TypeError):
-        encoded_labels, classes = pd.factorize(labels, sort=False)
+        encoded_labels, _ = pd.factorize(labels, sort=False)
 
         if -1 in encoded_labels:
             raise ValueError("The label column contains missing values.")
@@ -182,7 +185,7 @@ def initialize_simulation(dataset_path, parameters, data_slice=None):
     }
 
 
-def display_configuration(parameters):
+def display_configuration(parameters, include_model_type=True):
     col1, col2 = st.columns(2)
 
     with col1:
@@ -212,10 +215,11 @@ def display_configuration(parameters):
             ),
         )
 
-        st.markdown(
-            f":small_red_triangle_down: Model type: ***{parameters['model_type']}***",
-            help="Specifies whether the model is supervised or unsupervised.",
-        )
+        if include_model_type:
+            st.markdown(
+                f":small_red_triangle_down: Model type: ***{parameters['model_type']}***",
+                help="Specifies whether the model is supervised or unsupervised.",
+            )
 
     with col2:
         st.markdown(

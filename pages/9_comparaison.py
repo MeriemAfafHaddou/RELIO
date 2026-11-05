@@ -4,462 +4,505 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 from frouros.callbacks.batch import PermutationTestDistanceBased
-from frouros.datasets.synthetic import SEA
 from frouros.detectors.data_drift import EMD, JS
-from sklearn.decomposition import PCA
 from sklearn.preprocessing import LabelEncoder
 
 import relio
-
-st.logo("images/logo.png")
-st.set_page_config(
-    page_title="Comparaison",
-    page_icon="images/icon.png",
-    layout="wide",
-    initial_sidebar_state="expanded",
+from helpers import (
+    configure_page,
+    configure_parameters,
+    display_configuration,
+    display_drift_type,
+    prepare_pca,
 )
-st.write("""
-# Comparaison between RELIO and existing methods
-""")
-st.markdown("####")
-pca = PCA(n_components=1)
+
+# ------------------------------------------------------------------
+# Page configuration
+# ------------------------------------------------------------------
+
+configure_page(
+    page_title="Comparaison",
+    heading="Comparison between RELIO and existing methods",
+    description=(
+        "Concept drift occurs when the statistical properties of data "
+        "change over time. This page compares RELIO with existing "
+        "distribution-based drift detection methods."
+    ),
+    section_heading="Comparison:",
+)
+
+
+# ------------------------------------------------------------------
+# Dataset configuration
+# ------------------------------------------------------------------
+
+DATASET_CONFIG = {
+    "Asfault": {
+        "path": "data/Asfault.csv",
+        "header": None,
+        "data_slice": (0, 8000),
+        "label_column": 64,
+        "window_size": 500,
+        "metric": "Wasserstein order 2",
+        "cost_function": "Standardized Euclidean",
+        "warning_threshold": 10,
+        "detection_threshold": 20,
+        "stability_threshold": 3,
+    },
+    "Ozone": {
+        "path": "data/Ozone.csv",
+        "header": None,
+        "label_column": 72,
+        "window_size": 150,
+        "metric": "Wasserstein order 2",
+        "cost_function": "Standardized Euclidean",
+        "warning_threshold": 50,
+        "detection_threshold": 70,
+        "stability_threshold": 3,
+    },
+    "Simulation : Iris Sudden": {
+        "path": "data/iris_sudden.csv",
+        "window_size": 20,
+        "metric": "Wasserstein order 2",
+        "cost_function": "Standardized Euclidean",
+        "warning_threshold": 15,
+        "detection_threshold": 30,
+        "stability_threshold": 3,
+        "sudden_drift_threshold": 2,
+    },
+    "Simulation : Iris Gradual": {
+        "path": "data/iris_gradual.csv",
+        "window_size": 20,
+        "metric": "Wasserstein order 2",
+        "cost_function": "Standardized Euclidean",
+        "warning_threshold": 5,
+        "detection_threshold": 10,
+        "stability_threshold": 3,
+    },
+    "Simulation : Iris Recurrent": {
+        "path": "data/iris_recurrent.csv",
+        "window_size": 20,
+        "metric": "Wasserstein order 2",
+        "cost_function": "Standardized Euclidean",
+        "warning_threshold": 15,
+        "detection_threshold": 25,
+        "stability_threshold": 4,
+    },
+    "Simulation : Iris Incremental": {
+        "path": "data/iris_incremental.csv",
+        "window_size": 40,
+        "metric": "Wasserstein order 2",
+        "cost_function": "Standardized Euclidean",
+        "warning_threshold": 10,
+        "detection_threshold": 15,
+        "stability_threshold": 3,
+    },
+    "Synthetic : Insects Sudden": {
+        "path": "data/insects_sudden.csv",
+        "header": None,
+        "data_slice": (9800, 13800),
+        "window_size": 200,
+        "metric": "Wasserstein order 2",
+        "cost_function": "Standardized Euclidean",
+        "warning_threshold": 40,
+        "detection_threshold": 60,
+        "stability_threshold": 3,
+    },
+    "Synthetic : Insects Incremental": {
+        "path": "data/insects_incremental.csv",
+        "header": None,
+        "data_slice": (32000, 37000),
+        "window_size": 200,
+        "metric": "Wasserstein order 2",
+        "cost_function": "Standardized Euclidean",
+        "warning_threshold": 20,
+        "detection_threshold": 40,
+        "stability_threshold": 3,
+    },
+}
 
 option = st.selectbox(
-    ":bar_chart: Which dataset would you like to pick ?",
-    (
-        "Generated data",
-        "Simulation : Iris Gradual",
-        "Simulation : Iris Incremental",
-        "Simulation : Iris Sudden",
-        "Simulation : Iris Recurrent",
-        "Synthetic : Insects Sudden",
-        "Synthetic : Insects Incremental",
-        "Ozone",
-        "Asfault",
-    ),
+    ":bar_chart: Which dataset would you like to pick?",
+    list(DATASET_CONFIG.keys()),
 )
+
+
+# ------------------------------------------------------------------
+# Dataset loading
+# ------------------------------------------------------------------
+
+
+dataset_config = DATASET_CONFIG[option]
+
+df = pd.read_csv(
+    dataset_config["path"],
+    header=dataset_config.get("header", "infer"),
+)
+
+# Apply the selected data slice.
+if "data_slice" in dataset_config:
+    start, end = dataset_config["data_slice"]
+    df = df.iloc[start:end].copy()
+
+# Encode the class column when its position is explicitly defined.
+if "label_column" in dataset_config:
+    label_column = dataset_config["label_column"]
+
+    label_encoder = LabelEncoder()
+    df["class"] = label_encoder.fit_transform(df[label_column])
+
+    df = df.drop(columns=[label_column])
+
+else:
+    # Encode the existing target column.
+    labels = df.iloc[:, -1]
+
+    try:
+        encoded_labels = pd.to_numeric(labels).astype(int)
+    except (ValueError, TypeError):
+        encoded_labels, _ = pd.factorize(labels, sort=False)
+
+        if -1 in encoded_labels:
+            raise ValueError("The label column contains missing values.")
+
+    df.iloc[:, -1] = encoded_labels
+
+df = df.reset_index(drop=True)
+
+defaults = {
+    "window_size": dataset_config["window_size"],
+    "warning_threshold": dataset_config["warning_threshold"],
+    "detection_threshold": dataset_config["detection_threshold"],
+    "metric": "Wasserstein order 2",
+    "cost_function": "Standardized Euclidean",
+    "stability_threshold": 4,
+}
+
+
+# ------------------------------------------------------------------
+# Parameter configuration
+# ------------------------------------------------------------------
+
+parameters = configure_parameters(
+    defaults,
+    include_model_type=False,
+)
+
+display_configuration(
+    parameters,
+    include_model_type=False,
+)
+
+
+# ------------------------------------------------------------------
+# Data preparation
+# ------------------------------------------------------------------
+
+window_size = parameters["window_size"]
+
+if len(df) < 2 * window_size:
+    st.error(
+        "The selected dataset must contain at least two complete windows."
+    )
+    st.stop()
+
+# PCA representation for Frouros.
+pca, pc1 = prepare_pca(df, n_components=1)
+
+# RELIO initialization.
+api = relio.Relio(
+    window_size=window_size,
+    warning_threshold=parameters["warning_threshold"],
+    detection_threshold=parameters["detection_threshold"],
+    ot_metric=parameters["ot_metric"],
+    cost_function=parameters["cost_function"],
+    stability_threshold=parameters["stability_threshold"],
+    df=df,
+)
+
+# Initial reference distribution.
+ref_dist = df.iloc[:window_size].to_numpy()
+
+first_concept = relio.Concept(
+    1,
+    ref_dist[:, :-1],
+)
+
+api.add_concept(first_concept)
+api.set_curr_concept(first_concept)
+
+ref_dist_X = ref_dist[:, :-1]
+ref_dist_y = ref_dist[:, -1].astype(int)
+
+# Frouros reference distribution.
+fr_ref = pc1[:window_size]
+
+
+# ------------------------------------------------------------------
+# Frouros detectors
+# ------------------------------------------------------------------
+
+def initialize_frouros_detector(detector_class):
+    return detector_class(
+        callbacks=[
+            PermutationTestDistanceBased(
+                num_permutations=1000,
+                random_state=31,
+                num_jobs=-1,
+                method="exact",
+                name="permutation_test",
+                verbose=True,
+            ),
+        ],
+    )
+
+
+emd_detector = initialize_frouros_detector(EMD)
+js_detector = initialize_frouros_detector(JS)
+
+emd_detector.fit(X=fr_ref)
+js_detector.fit(X=fr_ref)
+
+ALPHA = 0.05
+
+
+# ------------------------------------------------------------------
+# Comparison interface
+# ------------------------------------------------------------------
+
+st.write("")
 
 col1, col2 = st.columns(2)
 
-if option == "Asfault":
-    df = pd.read_csv("data/Asfault.csv", header=None)[:8000]
-    label_encoder = LabelEncoder()
-    df["class"] = label_encoder.fit_transform(df[64])
-    class_mapping = dict(
-        zip(label_encoder.classes_, label_encoder.transform(label_encoder.classes_))
-    )
-    df = df.drop(64, axis="columns")
-    df.columns = df.columns.astype(str)
-    ALERT_INIT = 10
-    DETECT_INIT = 20
-    WIN_SIZE = 500
-elif option == "Ozone":
-    df = pd.read_csv("data/Ozone.csv", header=None)
-    label_encoder = LabelEncoder()
-    df["class"] = label_encoder.fit_transform(df[72])
-    class_mapping = dict(
-        zip(label_encoder.classes_, label_encoder.transform(label_encoder.classes_))
-    )
-    df = df.drop(72, axis="columns")
-    df.columns = df.columns.astype(str)
-    ALERT_INIT = 50
-    DETECT_INIT = 70
-    WIN_SIZE = 150
-elif option == "Simulation : Iris Sudden":
-    df = pd.read_csv("data/iris_sudden.csv")
-    ALERT_INIT = 20
-    DETECT_INIT = 40
-    WIN_SIZE = 50
-elif option == "Simulation : Iris Gradual":
-    df = pd.read_csv("data/iris_gradual.csv")
-    ALERT_INIT = 20
-    DETECT_INIT = 40
-    WIN_SIZE = 20
-elif option == "Simulation : Iris Recurrent":
-    df = pd.read_csv("data/iris_recurrent.csv")
-    ALERT_INIT = 5
-    DETECT_INIT = 25
-    WIN_SIZE = 20
-elif option == "Simulation : Iris Incremental":
-    df = pd.read_csv("data/iris_incremental.csv")
-    ALERT_INIT = 5
-    DETECT_INIT = 25
-    WIN_SIZE = 40
-elif option == "Synthetic : Insects Sudden":
-    df = pd.read_csv("data/insects_sudden.csv", header=None)[9800:13800]
-    ALERT_INIT = 50
-    DETECT_INIT = 70
-    WIN_SIZE = 200
-elif option == "Synthetic : Insects Incremental":
-    df = pd.read_csv("data/insects_incremental.csv", header=None)[32000:37000]
-    ALERT_INIT = 20
-    DETECT_INIT = 40
-    WIN_SIZE = 200
-elif option == "Generated data":
-    sea = SEA(seed=31)
-    it = sea.generate_dataset(block=3, noise=0.4, num_samples=500)
-    # Convert the iterator to a list of tuples
-    data = list(it)
-
-    # Separate the arrays and the integers
-    arrays, ints = zip(*data)
-
-    # Convert arrays to a 2D array (assuming all arrays have the same length)
-    array_data = np.vstack(arrays)
-
-    # Create the DataFrame
-    df = pd.DataFrame(array_data)
-    df["class"] = ints
-    WIN_SIZE = 50
-    ALERT_INIT = 5
-    DETECT_INIT = 10
-
-# Modify parameters
-st.markdown("")
-btn1, btn2 = st.columns(2)
-with btn1:
-    with st.popover(":gear: Adjust parameters"):
-        st.write("""
-        :gear: Adjust test parameters
-        """)
-        window_size = st.number_input(
-            "Enter the window size",
-            min_value=1,
-            value=WIN_SIZE,
-            placeholder="Window size",
-        )
-        metric_input = st.selectbox(
-            "Select the detection metric",
-            [
-                "Wasserstein order 1",
-                "Wasserstein order 2",
-                "Regularized Wasserstein",
-            ],
-            index=1,
-        )
-        cost_input = st.selectbox(
-            "Select the cost function",
-            ["Euclidean", "Standardized Euclidean", "Mahalanobis"],
-            index=1,
-        )
-        if metric_input == "Wasserstein order 1":
-            ot_metric = relio.OTMetric.WASSERSTEIN1
-        elif metric_input == "Wasserstein order 2":
-            ot_metric = relio.OTMetric.WASSERSTEIN2
-        elif metric_input == "Regularized Wasserstein":
-            ot_metric = relio.OTMetric.SINKHORN
-
-        if cost_input == "Euclidean":
-            cost_function = relio.CostFunction.EUCLIDEAN
-        elif cost_input == "Standardized Euclidean":
-            cost_function = relio.CostFunction.SEUCLIDEAN
-        elif cost_input == "Mahalanobis":
-            cost_function = relio.CostFunction.MAHALANOBIS
-        warning_threshold = st.number_input(
-            "Enter the alert percentage",
-            min_value=1,
-            value=ALERT_INIT,
-            placeholder="Alert percentage",
-        )
-        detect_thold = st.number_input(
-            "Enter the detection percentage",
-            min_value=1,
-            value=DETECT_INIT,
-            placeholder="Detection percentage",
-        )
-        stblty_thold = st.number_input(
-            "Enter the stability threshold",
-            min_value=1,
-            value=4,
-            placeholder="Stability threshold",
-        )
-
-pc1 = pca.fit_transform(df.iloc[:, :-1])
-
-# API initialization
-api = relio.Relio(
-    window_size,
-    warning_threshold,
-    detect_thold,
-    ot_metric,
-    cost_function,
-    stblty_thold,
-    df,
-    0,
-)
-
 with col1:
-    st.markdown(
-        f"""
-        :small_red_triangle_down: Window size: ***{window_size} data points***
-        """,
-        help="This is the :blue-background[number of data points] considered "
-        "for calculating the drift metric.",
+    st.write(
+        f":small_red_triangle_down: Window size: "
+        f"***{window_size} data points***"
     )
 
-    st.markdown(
-        f"""
-        :small_red_triangle_down: Detection metric: ***{metric_input}***
-        """,
-        help="This is the metric based on optimal transport to "
-        ":blue-background[compare data distributions] in order to detect "
-        "drift. Optimal transport offers a variety of metrics. We chose "
-        "the ones most widely used in the literature.",
+    st.write(
+        f":small_red_triangle_down: Detection metric: "
+        f"***{parameters['metric_input']}***"
     )
 
-    st.markdown(
-        f"""
-        :small_red_triangle_down: Cost function: ***{cost_input}***
-        """,
-        help="This is a :blue-background[distance computed between data pairs]"
-        " from two distributions, used by optimal transport metrics.",
+    st.write(
+        f":small_red_triangle_down: Cost function: "
+        f"***{parameters['cost_input']}***"
     )
 
 with col2:
-    st.markdown(
-        f"""
-        :small_red_triangle_down: Alert percentage : ***{warning_threshold}%***
-        """,
-        help="This is the :blue-background[distribution shift percentage] "
-        "above which an alert is triggered. For example, if the "
-        "comparison metric increases by 20%, an alert is raised.",
-    )
-
-    st.markdown(
-        f"""
-        :small_red_triangle_down: Detection percentage : ***{detect_thold}%***
-        """,
-        help="This is the :blue-background[distribution shift percentage] "
-        "above which drift is detected. For example, if the comparison "
-        "metric increases by 50%, drift is confirmed.",
-    )
-
-    st.markdown(
-        f"""
-        :small_red_triangle_down: Stability threshold : ***{stblty_thold}
-        windows***
-        """,
-        help="This is the :blue-background[number of windows] used to declare "
-        "that the data are :blue-background[stable within a "
-        "distribution], meaning no drift is present.",
-    )
-
-fr_win = np.array([])
-emd_detector = EMD(
-    callbacks=[
-        PermutationTestDistanceBased(
-            num_permutations=1000,
-            random_state=31,
-            num_jobs=-1,
-            method="exact",
-            name="permutation_test",
-            verbose=True,
-        ),
-    ],
-)
-js_detector = JS(
-    callbacks=[
-        PermutationTestDistanceBased(
-            num_permutations=1000,
-            random_state=31,
-            num_jobs=-1,
-            method="exact",
-            name="permutation_test",
-            verbose=True,
-        ),
-    ],
-)
-ALPHA = 0.05
-fr_ref = pc1[:WIN_SIZE]
-_ = emd_detector.fit(X=fr_ref)
-_ = js_detector.fit(X=fr_ref)
-
-ref_dist = []
-for i in range(window_size):
-    ref_dist.append(df.iloc[i])
-first_concept = relio.Concept(1, np.array(ref_dist))
-api.add_concept(first_concept)
-api.set_curr_concept(first_concept)
-current_window = []
-drifts = []
-ref_dist_X = fr_ref
-ref_dist_y = np.array(ref_dist)[:, -1].astype(int)
-all_classes = np.unique(np.array(df)[:, -1].astype(int))
-dist_emd = []
-dist_js = []
-with btn2:
-    button = st.button(":arrow_forward: Lancer le test ", type="primary")
-if button:
-    st.toast("Initializing the API...", icon="⏳")
-    st.write("""
-    ##### :bar_chart: Evolution of the data distribution:
-    """)
-    chart = st.empty()
     st.write(
-        f"""
-        🔻 Quality of representation on axis 1 =
-        **{pca.explained_variance_ratio_[0] * 100:.2f}%**
-        """
+        f":small_red_triangle_down: Alert percentage: "
+        f"***{parameters['warning_threshold']}%***"
+    )
+
+    st.write(
+        f":small_red_triangle_down: Detection percentage: "
+        f"***{parameters['detection_threshold']}%***"
+    )
+
+    st.write(
+        f":small_red_triangle_down: Stability threshold: "
+        f"***{parameters['stability_threshold']} windows***"
+    )
+
+
+# ------------------------------------------------------------------
+# Run comparison
+# ------------------------------------------------------------------
+
+button = st.button(
+    ":arrow_forward: Launch comparison",
+    type="primary",
+)
+
+if button:
+
+    st.toast("Initializing the comparison...", icon="⏳")
+
+    st.write("##### :bar_chart: Evolution of the data distribution:")
+
+    chart = st.empty()
+
+    st.write(
+        f"Quality of representation on axis 1 = "
+        f"**{pca.explained_variance_ratio_[0] * 100:.2f}%**"
     )
 
     st.divider()
 
-    st.write("""
-            ### :scales: Detection results comparaison
-    """)
+    st.write("### :scales: Detection results comparison")
+
     relio_col, fr_col1, fr_col2 = st.columns(3)
+
     with relio_col:
-        st.markdown("""##### RELIO """)
-        st.write("""
-        ##### 	:chart_with_upwards_trend: Relio metric evolution
-        """)
+        st.markdown("##### RELIO")
+        st.write("##### :chart_with_upwards_trend: RELIO metric evolution")
         distances_relio = st.empty()
         st.divider()
 
     with fr_col1:
         st.markdown(
-            """##### Frouros - EMD """,
-            help="Earth Mover's Distance : 1-Wasserstein",
+            "##### Frouros - EMD",
+            help="Earth Mover's Distance: 1-Wasserstein.",
         )
-        st.write("""
-        ##### 	:chart_with_upwards_trend: EMD distance evolution :
-        """)
+        st.write("##### :chart_with_upwards_trend: EMD distance evolution")
         distances_emd = st.empty()
         st.divider()
 
     with fr_col2:
         st.markdown(
-            """##### Frouros - JS """,
-            help="Jensen-Shannon Distance: a distance based on Kullback-"
-                "Leibler divergence",
+            "##### Frouros - JS",
+            help="Jensen-Shannon distance based on KL divergence.",
         )
-        st.write("""
-            ##### :chart_with_upwards_trend: Evolution of the JS distance:
-        """)
-
+        st.write("##### :chart_with_upwards_trend: JS distance evolution")
         distances_js = st.empty()
         st.divider()
-    for i in range(window_size, len(df) + 1):
-        # Plot the data from the start to the current point
-        chart.line_chart(pc1[:i])
-        current_window.append(df.iloc[i - 1])
-        if len(current_window) == window_size:
-            fr_win = pc1[i - window_size: i]
-            api.set_curr_win(np.array(current_window))
-            api.detect_drift()
 
-            distances_data = pd.DataFrame(
-                api.get_distance_history()[:i], columns=["distance"])
-            distances_data["alert"] = api.get_warning_thold()
-            distances_data["detection"] = api.get_detect_thold()
+    # Comparison histories.
+    dist_emd = []
+    dist_js = []
 
-            win_X = np.array(current_window)[:, :-1]
-            win_y = np.array(current_window)[:, -1].astype(int)
-            if api.get_action() == 0:
-                drift_time = datetime.datetime.now().strftime("%H:%M:%S")
-                st.toast(
-                    ":red[A drift is detected in data with index "
-                    f"{i + 1 - window_size} at {drift_time}]",
-                    icon="⚠️",
-                )
-                with relio_col:
-                    st.error(
-                        " RELIO : A drift is detected in data with index "
-                        f"{i + 1 - window_size} à {drift_time}",
-                        icon="⚠️",
-                    )
-                drift_type = api.identify_drift_type()
-                with relio_col:
-                    if drift_type is not None:
-                        if drift_type == relio.DriftType.GRADUAL:
-                            st.toast(":blue[The drift type is: Gradual]",
-                                    icon="📌")
-                            st.info("The drift type is: Gradual", icon="📌")
-                        elif drift_type == relio.DriftType.SUDDEN:
-                            st.toast(":blue[The drift type is: Sudden]",
-                                     icon="📌")
-                            st.info("The drift type is: Sudden", icon="📌")
-                        elif drift_type == relio.DriftType.RECURRENT:
-                            st.toast(
-                                ":blue[The drift type is: Recurrent]",
-                                icon="📌")
-                            st.info("The drift type is: Recurrent", icon="📌")
-                        elif drift_type == relio.DriftType.INCREMENTAL:
-                            st.toast(
-                                ":blue[The drift type is: Incremental]",
-                                icon="📌")
-                            st.info("The drift type is: Incremental",
-                                    icon="📌")
-                api.reset_adapt_model()
+    current_window = []
+    displayed_drifts = set()
 
-                ref_dist_X = win_X
-                ref_dist_y = win_y
-            elif api.get_action() == 1:
-                alert_time = datetime.datetime.now().strftime("%H:%M:%S")
-                st.toast(
-                    f"Alert: A minor change in distribution has occurred in "
-                    f"data with index {i + 1 - window_size} at {alert_time}!",
-                    icon="❗",
-                )
-                with relio_col:
-                    st.warning(
-                        "Alert: A minor change in distribution has occurred "
-                        f"in data with index {i + 1 - window_size} at "
-                        f"{alert_time}!",
-                        icon="❗",
-                    )
-                api.reset_adjust_model()
+    # Process observations after the initial reference window.
+    for i in range(window_size, len(df)):
+
+        chart.line_chart(pc1[:i + 1])
+
+        current_window.append(df.iloc[i].to_numpy())
+
+        if len(current_window) < window_size:
+            continue
+
+        # Current window.
+        win = np.asarray(current_window)
+
+        win_X = win[:, :-1]
+        win_y = win[:, -1].astype(int)
+
+        fr_win = pc1[i - window_size + 1:i + 1]
+
+        # ----------------------------------------------------------
+        # RELIO
+        # ----------------------------------------------------------
+
+        api.set_curr_win(win_X)
+        api.detect_drift()
+
+        action = api.get_action()
+
+        if action == relio.DriftStatus.DRIFT:
+
+            drift_time = datetime.datetime.now().strftime("%H:%M:%S")
+
+            message = (
+                f"RELIO: A drift is detected in data with index "
+                f"{i + 1 - window_size} at {drift_time}."
+            )
+
+            st.toast(message, icon="⚠️")
 
             with relio_col:
-                distances_relio.line_chart(
-                    distances_data, color=["#338AFF", "#FFAC1C", "#FF0D0D"]
+                st.error(message, icon="⚠️")
+
+            drift_type = api.identify_drift_type()
+
+            with relio_col:
+                display_drift_type(
+                    drift_type,
+                    detection_window=i,
+                    displayed_drifts=displayed_drifts,
                 )
 
-            emd_dist, callbacks_log = emd_detector.compare(X=fr_win)
-            p_value = callbacks_log["permutation_test"]["p_value"]
-            if p_value <= ALPHA:
-                with fr_col1:
-                    drift_time = datetime.datetime.now().strftime("%H:%M:%S")
-                    st.error(
-                        " Frouros : A drift is detected in data with index "
-                        f"{i + 1 - window_size} at {drift_time}",
-                        icon="⚠️",
-                    )
-                    _ = emd_detector.fit(X=fr_win)
+            api.reset_adapt_model()
+
+            ref_dist_X = win_X
+            ref_dist_y = win_y
+
+        elif action == relio.DriftStatus.WARNING:
+
+            alert_time = datetime.datetime.now().strftime("%H:%M:%S")
+
+            message = (
+                f"RELIO: A minor change in distribution occurred "
+                f"at data index {i + 1 - window_size} at {alert_time}."
+            )
+
+            st.toast(message, icon="❗")
+
+            with relio_col:
+                st.warning(message, icon="❗")
+
+            api.reset_adjust_model()
+
+        # RELIO distance history.
+        distances_data = pd.DataFrame(
+            {
+                "distance": api.get_distance_history(),
+                "alert": api.get_warning_thold(),
+                "detection": api.get_detect_thold(),
+            }
+        )
+
+        with relio_col:
+            distances_relio.line_chart(
+                distances_data,
+                color=["#338AFF", "#FFAC1C", "#FF0D0D"],
+            )
+
+        # ----------------------------------------------------------
+        # FROUROS - EMD
+        # ----------------------------------------------------------
+
+        emd_dist, callbacks_log = emd_detector.compare(X=fr_win)
+
+        p_value = callbacks_log["permutation_test"]["p_value"]
+
+        if p_value <= ALPHA:
+
+            drift_time = datetime.datetime.now().strftime("%H:%M:%S")
+
             with fr_col1:
-                dist_emd.append(emd_dist)
-                distances_emd.line_chart(dist_emd, color=["#338AFF"])
-            js_dist, callbacks_log = js_detector.compare(X=fr_win)
-            p_value = callbacks_log["permutation_test"]["p_value"]
-            if p_value <= ALPHA:
-                with fr_col2:
-                    drift_time = datetime.datetime.now().strftime("%H:%M:%S")
-                    st.error(
-                        " Frouros : A drift is detected in data with index "
-                        f"{i + 1 - window_size} at {drift_time}",
-                        icon="⚠️",
-                    )
-                    _ = js_detector.fit(X=fr_win)
+                st.error(
+                    f"Frouros EMD: Drift detected at data index "
+                    f"{i + 1 - window_size}, {drift_time}.",
+                    icon="⚠️",
+                )
+
+            emd_detector.fit(X=fr_win)
+
+        dist_emd.append(emd_dist)
+
+        with fr_col1:
+            distances_emd.line_chart(dist_emd, color=["#338AFF"])
+
+        # ----------------------------------------------------------
+        # FROUROS - JS
+        # ----------------------------------------------------------
+
+        js_dist, callbacks_log = js_detector.compare(X=fr_win)
+
+        p_value = callbacks_log["permutation_test"]["p_value"]
+
+        if p_value <= ALPHA:
+
+            drift_time = datetime.datetime.now().strftime("%H:%M:%S")
 
             with fr_col2:
-                dist_js.append(js_dist)
-                distances_js.line_chart(dist_js, color=["#338AFF"])
-            current_window = []
-            fr_win = np.array([])
+                st.error(
+                    f"Frouros JS: Drift detected at data index "
+                    f"{i + 1 - window_size}, {drift_time}.",
+                    icon="⚠️",
+                )
 
-        drift_type = api.identify_drift_type()
-        with relio_col:
-            if drift_type is not None:
-                if drift_type == relio.DriftType.GRADUAL:
-                    st.toast(":blue[The drift type is: Gradual]", icon="📌")
-                    st.info("The drift type is: Gradual", icon="📌")
-                elif drift_type == relio.DriftType.SUDDEN:
-                    st.toast(":blue[The drift type is: Sudden]", icon="📌")
-                    st.info("The drift type is: Sudden", icon="📌")
-                elif drift_type == relio.DriftType.RECURRENT:
-                    st.toast(":blue[The drift type is: Recurrent]", icon="📌")
-                    st.info("The drift type is: Recurrent", icon="📌")
-                elif drift_type == relio.DriftType.INCREMENTAL:
-                    st.toast(":blue[The drift type is: Incremental]",
-                             icon="📌")
-                    st.info("The drift type is: Incremental", icon="📌")
+            js_detector.fit(X=fr_win)
+
+        dist_js.append(js_dist)
+
+        with fr_col2:
+            distances_js.line_chart(dist_js, color=["#338AFF"])
+
+        # Reset the current window.
+        current_window = []
